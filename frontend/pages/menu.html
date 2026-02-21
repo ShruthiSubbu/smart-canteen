@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Canteen – Menu</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="menu-page">
+
+  <div class="navbar">
+    <h2>🍽️ Smart Canteen</h2>
+    <span id="welcomeMsg"></span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
+  </div>
+
+  <div id="rushBanner" class="rush-banner">
+    ⚠️ Rush Hour! Expect 15-20 min wait. Consider ordering later.
+  </div>
+
+  <div class="menu-container">
+    <div id="menuItems"></div>
+  </div>
+
+  <div class="cart-bar">
+    <span id="cartInfo">🛒 Cart: 0 items | ₹0</span>
+    <button class="checkout-btn" onclick="placeOrder()">Place Order</button>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    if (!user || !token) window.location.href = 'index.html';
+
+    document.getElementById('welcomeMsg').textContent = `👋 ${user.name}`;
+
+    let cart = [];
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    }
+
+    async function loadMenu() {
+      const res = await fetch('http://localhost:3000/api/menu');
+      const items = await res.json();
+
+      const categories = ['breakfast', 'lunch', 'snacks', 'beverages'];
+      let html = '';
+
+      categories.forEach(cat => {
+        const catItems = items.filter(i => i.category === cat);
+        if (catItems.length === 0) return;
+        html += `<h3>🍴 ${cat}</h3><div class="menu-grid">`;
+        catItems.forEach(item => {
+          html += `
+            <div class="menu-card">
+              <h4>${item.name}</h4>
+              <div class="price">₹${item.price}</div>
+              <div class="stock">Stock: ${item.stockCount}</div>
+              ${item.isAvailable
+                ? `<button class="add-btn" onclick='addToCart(${JSON.stringify(item)})'>Add to Cart</button>`
+                : `<div class="unavailable">Out of Stock</div>`
+              }
+            </div>`;
+        });
+        html += '</div>';
+      });
+
+      document.getElementById('menuItems').innerHTML = html;
+    }
+
+    function addToCart(item) {
+      const existing = cart.find(c => c.menuItemId === item._id);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        cart.push({ menuItemId: item._id, name: item.name, price: item.price, quantity: 1 });
+      }
+      updateCartBar();
+    }
+
+    function updateCartBar() {
+      const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+      const count = cart.reduce((sum, i) => sum + i.quantity, 0);
+      document.getElementById('cartInfo').textContent = `🛒 Cart: ${count} items | ₹${total}`;
+    }
+
+    async function placeOrder() {
+      if (cart.length === 0) return alert('Your cart is empty!');
+      const res = await fetch('http://localhost:3000/api/orders/place', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ userId: user._id || '000000000000000000000001', items: cart })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(`✅ Order placed! Total: ₹${data.order.totalPrice}`);
+        cart = [];
+        updateCartBar();
+        loadMenu();
+      } else {
+        alert('❌ ' + data.message);
+      }
+    }
+
+    async function checkRush() {
+      const res = await fetch('http://localhost:3000/api/orders/rush-status');
+      const data = await res.json();
+      if (data.isRush) {
+        document.getElementById('rushBanner').style.display = 'block';
+      }
+    }
+
+    loadMenu();
+    checkRush();
+    setInterval(loadMenu, 30000);
+  </script>
+
+</body>
+</html>

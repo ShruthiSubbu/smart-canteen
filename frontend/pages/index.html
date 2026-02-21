@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Canteen – Login</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+
+  <div class="auth-container">
+    <div class="auth-box">
+      <h1>🍽️ Smart Canteen</h1>
+      <p class="subtitle">Your college canteen, smarter!</p>
+
+      <!-- Tabs -->
+      <div class="tab-row">
+        <button class="tab active" onclick="showTab('login')">Login</button>
+        <button class="tab" onclick="showTab('register')">Register</button>
+      </div>
+
+      <!-- Login Form -->
+      <div id="login" class="form-section">
+        <input type="email" id="loginEmail" placeholder="Email" />
+        <input type="password" id="loginPassword" placeholder="Password" />
+        <button class="btn-primary" onclick="login()">Login</button>
+        <p id="loginMsg" class="msg"></p>
+      </div>
+
+      <!-- Register Form -->
+      <div id="register" class="form-section" style="display:none">
+        <input type="text" id="regName" placeholder="Full Name" />
+        <input type="email" id="regEmail" placeholder="Email" />
+        <input type="password" id="regPassword" placeholder="Password" />
+        <select id="regRole">
+          <option value="student">Student</option>
+          <option value="admin">Admin</option>
+        </select>
+        <button class="btn-primary" onclick="register()">Register</button>
+        <p id="registerMsg" class="msg"></p>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../js/api.js"></script>
+  <script>
+    function showTab(tab) {
+      document.getElementById('login').style.display = tab === 'login' ? 'block' : 'none';
+      document.getElementById('register').style.display = tab === 'register' ? 'block' : 'none';
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+    }
+
+    async function login() {
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const msg = document.getElementById('loginMsg');
+
+      const res = await fetch('http://localhost:3000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('user', JSON.stringify(data.user));
+        if (data.user.role === 'admin') {
+          window.location.href = 'admin.html';
+        } else {
+          window.location.href = 'menu.html';
+        }
+      } else {
+        msg.style.color = 'red';
+        msg.textContent = data.message;
+      }
+    }
+
+    async function register() {
+      const name = document.getElementById('regName').value;
+      const email = document.getElementById('regEmail').value;
+      const password = document.getElementById('regPassword').value;
+      const role = document.getElementById('regRole').value;
+      const msg = document.getElementById('registerMsg');
+
+      const res = await fetch('http://localhost:3000/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password, role })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        msg.style.color = 'green';
+        msg.textContent = 'Registered! Please login now.';
+      } else {
+        msg.style.color = 'red';
+        msg.textContent = data.message;
+      }
+    }
+  </script>
+
+</body>
+</html>
