@@ -19,12 +19,21 @@
   </div>
 
   <div class="menu-container">
+
+    <!-- Recommendations Section -->
+    <div id="recommendSection" style="margin-bottom:10px;">
+      <div class="category-title">⭐ Recommended for You</div>
+      <div class="menu-grid" id="recommendations"></div>
+    </div>
+
+    <!-- Main Menu -->
     <div id="menuItems"></div>
+
   </div>
 
   <div class="cart-bar">
     <span id="cartInfo">🛒 Cart: 0 items | ₹0</span>
-    <button class="checkout-btn" onclick="placeOrder()">Place Order</button>
+    <button class="checkout-btn" onclick="placeOrder()">Place Order →</button>
   </div>
 
   <script>
@@ -32,39 +41,75 @@
     const token = localStorage.getItem('token');
     if (!user || !token) window.location.href = 'index.html';
 
-    document.getElementById('welcomeMsg').textContent = `👋 ${user.name}`;
+    document.getElementById('welcomeMsg').textContent = `👋 Hi, ${user.name}!`;
 
     let cart = [];
+    let allItems = [];
+
+    const emojis = {
+      breakfast: '🍳',
+      lunch: '🍱',
+      snacks: '🍿',
+      beverages: '☕'
+    };
+
+    const foodEmojis = {
+      'Masala Dosa': '🫓',
+      'Veg Fried Rice': '🍚',
+      'Samosa': '🥟',
+      'Chai': '☕',
+      'Paneer Butter Masala': '🍛',
+      'Idli Sambar': '🍽️',
+      'Poha': '🥣',
+      'Veg Biryani': '🍛',
+      'Dal Rice': '🍚',
+      'Vada': '🍩',
+      'Coffee': '☕',
+      'Lemon Juice': '🍋',
+    };
 
     function logout() {
       localStorage.clear();
       window.location.href = 'index.html';
     }
 
+    function makeCard(item) {
+      const emoji = foodEmojis[item.name] || '🍽️';
+      return `
+        <div class="menu-card">
+          <span class="food-emoji">${emoji}</span>
+          <h4>${item.name}</h4>
+          <div class="price">₹${item.price}</div>
+          <div class="stock">📦 Stock: ${item.stockCount}</div>
+          ${item.isAvailable
+            ? `<button class="add-btn" onclick='addToCart(${JSON.stringify(item)})'>+ Add to Cart</button>`
+            : `<div class="unavailable">❌ Out of Stock</div>`
+          }
+        </div>`;
+    }
+
     async function loadMenu() {
       const res = await fetch('http://localhost:3000/api/menu');
-      const items = await res.json();
+      allItems = await res.json();
 
+      // Recommendations — top 3 by orderCount
+      const recommended = [...allItems]
+        .sort((a, b) => b.orderCount - a.orderCount)
+        .slice(0, 3);
+
+      document.getElementById('recommendations').innerHTML =
+        recommended.map(makeCard).join('');
+
+      // Full menu by category
       const categories = ['breakfast', 'lunch', 'snacks', 'beverages'];
       let html = '';
-
       categories.forEach(cat => {
-        const catItems = items.filter(i => i.category === cat);
+        const catItems = allItems.filter(i => i.category === cat);
         if (catItems.length === 0) return;
-        html += `<h3>🍴 ${cat}</h3><div class="menu-grid">`;
-        catItems.forEach(item => {
-          html += `
-            <div class="menu-card">
-              <h4>${item.name}</h4>
-              <div class="price">₹${item.price}</div>
-              <div class="stock">Stock: ${item.stockCount}</div>
-              ${item.isAvailable
-                ? `<button class="add-btn" onclick='addToCart(${JSON.stringify(item)})'>Add to Cart</button>`
-                : `<div class="unavailable">Out of Stock</div>`
-              }
-            </div>`;
-        });
-        html += '</div>';
+        html += `<div class="category-title">${emojis[cat]} ${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>`;
+        html += `<div class="menu-grid">`;
+        html += catItems.map(makeCard).join('');
+        html += `</div>`;
       });
 
       document.getElementById('menuItems').innerHTML = html;
@@ -75,7 +120,12 @@
       if (existing) {
         existing.quantity += 1;
       } else {
-        cart.push({ menuItemId: item._id, name: item.name, price: item.price, quantity: 1 });
+        cart.push({
+          menuItemId: item._id,
+          name: item.name,
+          price: item.price,
+          quantity: 1
+        });
       }
       updateCartBar();
     }
@@ -83,19 +133,28 @@
     function updateCartBar() {
       const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
       const count = cart.reduce((sum, i) => sum + i.quantity, 0);
-      document.getElementById('cartInfo').textContent = `🛒 Cart: ${count} items | ₹${total}`;
+      document.getElementById('cartInfo').textContent =
+        `🛒 ${count} item${count !== 1 ? 's' : ''} | ₹${total}`;
     }
 
     async function placeOrder() {
       if (cart.length === 0) return alert('Your cart is empty!');
+
       const res = await fetch('http://localhost:3000/api/orders/place', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ userId: user._id || '000000000000000000000001', items: cart })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          userId: user._id || '000000000000000000000001',
+          items: cart
+        })
       });
+
       const data = await res.json();
       if (res.ok) {
-        alert(`✅ Order placed! Total: ₹${data.order.totalPrice}`);
+        alert(`✅ Order placed successfully!\nTotal: ₹${data.order.totalPrice}\nStatus: Pending`);
         cart = [];
         updateCartBar();
         loadMenu();
@@ -115,6 +174,7 @@
     loadMenu();
     checkRush();
     setInterval(loadMenu, 30000);
+    setInterval(checkRush, 30000);
   </script>
 
 </body>

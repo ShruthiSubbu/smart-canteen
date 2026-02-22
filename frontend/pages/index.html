@@ -10,42 +10,44 @@
 
   <div class="auth-container">
     <div class="auth-box">
-      <h1>🍽️ Smart Canteen</h1>
+      <div style="font-size:3rem; margin-bottom:10px;">🍽️</div>
+      <h1>Smart Canteen</h1>
       <p class="subtitle">Your college canteen, smarter!</p>
 
-      <!-- Tabs -->
       <div class="tab-row">
-        <button class="tab active" onclick="showTab('login')">Login</button>
-        <button class="tab" onclick="showTab('register')">Register</button>
+        <button class="tab active" onclick="showTab('login', event)">Login</button>
+        <button class="tab" onclick="showTab('register', event)">Register</button>
       </div>
 
       <!-- Login Form -->
       <div id="login" class="form-section">
-        <input type="email" id="loginEmail" placeholder="Email" />
-        <input type="password" id="loginPassword" placeholder="Password" />
-        <button class="btn-primary" onclick="login()">Login</button>
+        <input type="email" id="loginEmail" placeholder="📧 Email" />
+        <input type="password" id="loginPassword" placeholder="🔒 Password" />
+        <button class="btn-primary" onclick="login()">Login →</button>
         <p id="loginMsg" class="msg"></p>
       </div>
 
       <!-- Register Form -->
       <div id="register" class="form-section" style="display:none">
-        <input type="text" id="regName" placeholder="Full Name" />
-        <input type="email" id="regEmail" placeholder="Email" />
-        <input type="password" id="regPassword" placeholder="Password" />
+        <input type="text" id="regName" placeholder="👤 Full Name" />
+        <input type="email" id="regEmail" placeholder="📧 Email" />
+        <input type="password" id="regPassword" placeholder="🔒 Password" />
         <select id="regRole">
-          <option value="student">Student</option>
-          <option value="admin">Admin</option>
+          <option value="student">🎓 Student</option>
+          <option value="admin">👨‍💼 Admin</option>
         </select>
-        <button class="btn-primary" onclick="register()">Register</button>
+        <button class="btn-primary" onclick="register()">Register →</button>
         <p id="registerMsg" class="msg"></p>
       </div>
 
+      <p style="margin-top:20px; font-size:0.8rem; color:#94a3b8;">
+        VIT Chennai | Smart Canteen System 2024
+      </p>
     </div>
   </div>
 
-  <script src="../js/api.js"></script>
   <script>
-    function showTab(tab) {
+    function showTab(tab, event) {
       document.getElementById('login').style.display = tab === 'login' ? 'block' : 'none';
       document.getElementById('register').style.display = tab === 'register' ? 'block' : 'none';
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -56,6 +58,15 @@
       const email = document.getElementById('loginEmail').value;
       const password = document.getElementById('loginPassword').value;
       const msg = document.getElementById('loginMsg');
+
+      if (!email || !password) {
+        msg.style.color = 'red';
+        msg.textContent = 'Please fill in all fields!';
+        return;
+      }
+
+      msg.style.color = '#2563eb';
+      msg.textContent = 'Logging in...';
 
       const res = await fetch('http://localhost:3000/api/auth/login', {
         method: 'POST',
@@ -74,7 +85,7 @@
         }
       } else {
         msg.style.color = 'red';
-        msg.textContent = data.message;
+        msg.textContent = '❌ ' + data.message;
       }
     }
 
@@ -85,6 +96,15 @@
       const role = document.getElementById('regRole').value;
       const msg = document.getElementById('registerMsg');
 
+      if (!name || !email || !password) {
+        msg.style.color = 'red';
+        msg.textContent = 'Please fill in all fields!';
+        return;
+      }
+
+      msg.style.color = '#2563eb';
+      msg.textContent = 'Registering...';
+
       const res = await fetch('http://localhost:3000/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,10 +114,11 @@
       const data = await res.json();
       if (res.ok) {
         msg.style.color = 'green';
-        msg.textContent = 'Registered! Please login now.';
+        msg.textContent = '✅ Registered! Please login now.';
+        setTimeout(() => showTab('login', {target: document.querySelector('.tab')}), 1500);
       } else {
         msg.style.color = 'red';
-        msg.textContent = data.message;
+        msg.textContent = '❌ ' + data.message;
       }
     }
   </script>

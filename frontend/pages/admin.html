@@ -3,19 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Canteen – Admin</title>
+  <title>Smart Canteen – Admin Dashboard</title>
   <link rel="stylesheet" href="../css/style.css">
 </head>
 <body class="admin-page">
 
   <div class="navbar">
-    <h2>🍽️ Admin Dashboard</h2>
-    <span>Smart Canteen</span>
+    <h2>🍽️ Smart Canteen – Admin</h2>
+    <span>Dashboard</span>
     <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 
+  <!-- Stats Row -->
+  <div class="admin-stats">
+    <div class="stat-card">
+      <div class="stat-number" id="totalOrders">0</div>
+      <div class="stat-label">📋 Total Orders</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="pendingOrders">0</div>
+      <div class="stat-label">⏳ Pending</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="totalRevenue">₹0</div>
+      <div class="stat-label">💰 Total Revenue</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-number" id="rushStatus">🟢</div>
+      <div class="stat-label">Rush Hour Status</div>
+    </div>
+  </div>
+
+  <!-- Orders List -->
   <div class="orders-container">
-    <h3 style="margin-bottom:20px; color:#1e293b;">📋 Incoming Orders</h3>
+    <h3>📋 Incoming Orders <span style="font-size:0.8rem; color:#64748b; font-weight:400;">(auto-refreshes every 10s)</span></h3>
     <div id="ordersList"></div>
   </div>
 
@@ -32,31 +53,48 @@
       const res = await fetch('http://localhost:3000/api/orders/all');
       const orders = await res.json();
 
+      // Update stats
+      document.getElementById('totalOrders').textContent = orders.length;
+      document.getElementById('pendingOrders').textContent =
+        orders.filter(o => o.status === 'pending').length;
+      document.getElementById('totalRevenue').textContent =
+        '₹' + orders.reduce((sum, o) => sum + o.totalPrice, 0);
+
       if (orders.length === 0) {
-        document.getElementById('ordersList').innerHTML = '<p>No orders yet!</p>';
+        document.getElementById('ordersList').innerHTML =
+          '<div class="no-orders">🎉 No orders yet! Waiting for students...</div>';
         return;
       }
 
       let html = '';
       orders.forEach(order => {
         const items = order.items.map(i => `${i.name} x${i.quantity}`).join(', ');
+        const time = new Date(order.createdAt).toLocaleTimeString();
         html += `
           <div class="order-card">
             <h4>Order #${order._id.slice(-6).toUpperCase()}</h4>
-            <p>🍴 Items: ${items}</p>
-            <p>💰 Total: ₹${order.totalPrice}</p>
-            <p>🕐 Time: ${new Date(order.createdAt).toLocaleTimeString()}</p>
-            <span class="status-badge status-${order.status}">${order.status.toUpperCase()}</span><br/>
+            <p>🍴 <strong>Items:</strong> ${items}</p>
+            <p>💰 <strong>Total:</strong> ₹${order.totalPrice}</p>
+            <p>🕐 <strong>Time:</strong> ${time}</p>
+            <span class="status-badge status-${order.status}">
+              ${order.status.toUpperCase()}
+            </span><br/>
             <select class="status-select" onchange="updateStatus('${order._id}', this.value)">
-              <option value="pending" ${order.status==='pending'?'selected':''}>Pending</option>
-              <option value="preparing" ${order.status==='preparing'?'selected':''}>Preparing</option>
-              <option value="ready" ${order.status==='ready'?'selected':''}>Ready</option>
-              <option value="completed" ${order.status==='completed'?'selected':''}>Completed</option>
+              <option value="pending" ${order.status==='pending'?'selected':''}>⏳ Pending</option>
+              <option value="preparing" ${order.status==='preparing'?'selected':''}>👨‍🍳 Preparing</option>
+              <option value="ready" ${order.status==='ready'?'selected':''}>✅ Ready</option>
+              <option value="completed" ${order.status==='completed'?'selected':''}>🎉 Completed</option>
             </select>
           </div>`;
       });
 
       document.getElementById('ordersList').innerHTML = html;
+    }
+
+    async function checkRush() {
+      const res = await fetch('http://localhost:3000/api/orders/rush-status');
+      const data = await res.json();
+      document.getElementById('rushStatus').textContent = data.isRush ? '🔴' : '🟢';
     }
 
     async function updateStatus(orderId, status) {
@@ -69,7 +107,9 @@
     }
 
     loadOrders();
+    checkRush();
     setInterval(loadOrders, 10000);
+    setInterval(checkRush, 15000);
   </script>
 
 </body>
