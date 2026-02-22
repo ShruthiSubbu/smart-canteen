@@ -11,20 +11,28 @@
   <div class="navbar">
     <h2>🍽️ Smart Canteen</h2>
     <span id="welcomeMsg"></span>
-    <button class="logout-btn" onclick="logout()">Logout</button>
+    <div style="display:flex; gap:10px;">
+      <button class="logout-btn" onclick="window.location.href='orders.html'">📋 My Orders</button>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
   </div>
 
   <div id="rushBanner" class="rush-banner">
-    ⚠️ Rush Hour! Expect 15-20 min wait. Consider ordering later.
+    ⚠️ Rush Hour! Expect 15-20 min wait. Consider pre-ordering for later!
   </div>
 
   <div class="menu-container">
 
-    <!-- Recommendations Section -->
-    <div id="recommendSection" style="margin-bottom:10px;">
-      <div class="category-title">⭐ Recommended for You</div>
-      <div class="menu-grid" id="recommendations"></div>
+    <!-- Pre-order Scheduling -->
+    <div class="preorder-bar">
+      <label>🕐 Schedule Pickup Time:</label>
+      <input type="time" id="pickupTimeInput" />
+      <span style="font-size:0.85rem; color:#64748b;">Leave empty for ASAP (15 min)</span>
     </div>
+
+    <!-- Recommendations -->
+    <div class="category-title">⭐ Recommended for You</div>
+    <div class="menu-grid" id="recommendations"></div>
 
     <!-- Main Menu -->
     <div id="menuItems"></div>
@@ -37,7 +45,10 @@
   </div>
 
   <script>
-    const user = JSON.parse(localStorage.getItem('user'));
+    const userData = localStorage.getItem('user');
+if (!userData) window.location.href = 'index.html';
+const user = JSON.parse(userData);
+console.log('Loaded user:', user);
     const token = localStorage.getItem('token');
     if (!user || !token) window.location.href = 'index.html';
 
@@ -46,73 +57,85 @@
     let cart = [];
     let allItems = [];
 
-    const emojis = {
-      breakfast: '🍳',
-      lunch: '🍱',
-      snacks: '🍿',
-      beverages: '☕'
+    const emojis = { breakfast: '🍳', lunch: '🍱', snacks: '🍿', beverages: '☕' };
+    const foodEmojis = {
+      'Masala Dosa': '🫓', 'Veg Fried Rice': '🍚', 'Samosa': '🥟',
+      'Chai': '☕', 'Paneer Butter Masala': '🍛', 'Idli Sambar': '🍽️',
+      'Poha': '🥣', 'Veg Biryani': '🍛', 'Dal Rice': '🍚',
+      'Vada': '🍩', 'Coffee': '☕', 'Lemon Juice': '🍋'
     };
 
-    const foodEmojis = {
-      'Masala Dosa': '🫓',
-      'Veg Fried Rice': '🍚',
-      'Samosa': '🥟',
-      'Chai': '☕',
-      'Paneer Butter Masala': '🍛',
-      'Idli Sambar': '🍽️',
-      'Poha': '🥣',
-      'Veg Biryani': '🍛',
-      'Dal Rice': '🍚',
-      'Vada': '🍩',
-      'Coffee': '☕',
-      'Lemon Juice': '🍋',
-    };
+    // Toast notification
+    function showToast(message, type = 'success') {
+      const existing = document.querySelector('.toast');
+      if (existing) existing.remove();
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
 
     function logout() {
       localStorage.clear();
       window.location.href = 'index.html';
     }
 
+    function getPickupTime() {
+      const input = document.getElementById('pickupTimeInput').value;
+      if (input) return input;
+      const now = new Date();
+      now.setMinutes(now.getMinutes() + 15);
+      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     function makeCard(item) {
       const emoji = foodEmojis[item.name] || '🍽️';
+      if (!item.isAvailable || item.stockCount <= 0) {
+        return `
+          <div class="menu-card out-of-stock">
+            <span class="food-emoji">${emoji}</span>
+            <h4>${item.name}</h4>
+            <div class="price">₹${item.price}</div>
+            <div class="stock">📦 Stock: 0</div>
+            <div class="out-of-stock-badge">❌ Out of Stock</div>
+          </div>`;
+      }
       return `
         <div class="menu-card">
           <span class="food-emoji">${emoji}</span>
           <h4>${item.name}</h4>
           <div class="price">₹${item.price}</div>
           <div class="stock">📦 Stock: ${item.stockCount}</div>
-          ${item.isAvailable
-            ? `<button class="add-btn" onclick='addToCart(${JSON.stringify(item)})'>+ Add to Cart</button>`
-            : `<div class="unavailable">❌ Out of Stock</div>`
-          }
+          <button class="add-btn" onclick='addToCart(${JSON.stringify(item)})'>+ Add to Cart</button>
         </div>`;
     }
-
+    
     async function loadMenu() {
-      const res = await fetch('http://localhost:3000/api/menu');
-      allItems = await res.json();
+      try {
+        const res = await fetch('http://localhost:3000/api/menu');
+        allItems = await res.json();
 
-      // Recommendations — top 3 by orderCount
-      const recommended = [...allItems]
-        .sort((a, b) => b.orderCount - a.orderCount)
-        .slice(0, 3);
+        // Recommendations — top 3 by orderCount
+        const recommended = [...allItems]
+          .sort((a, b) => b.orderCount - a.orderCount)
+          .slice(0, 3);
+        document.getElementById('recommendations').innerHTML =
+          recommended.map(makeCard).join('');
 
-      document.getElementById('recommendations').innerHTML =
-        recommended.map(makeCard).join('');
-
-      // Full menu by category
-      const categories = ['breakfast', 'lunch', 'snacks', 'beverages'];
-      let html = '';
-      categories.forEach(cat => {
-        const catItems = allItems.filter(i => i.category === cat);
-        if (catItems.length === 0) return;
-        html += `<div class="category-title">${emojis[cat]} ${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>`;
-        html += `<div class="menu-grid">`;
-        html += catItems.map(makeCard).join('');
-        html += `</div>`;
-      });
-
-      document.getElementById('menuItems').innerHTML = html;
+        // Full menu by category
+        const categories = ['breakfast', 'lunch', 'snacks', 'beverages'];
+        let html = '';
+        categories.forEach(cat => {
+          const catItems = allItems.filter(i => i.category === cat);
+          if (!catItems.length) return;
+          html += `<div class="category-title">${emojis[cat]} ${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>`;
+          html += `<div class="menu-grid">${catItems.map(makeCard).join('')}</div>`;
+        });
+        document.getElementById('menuItems').innerHTML = html;
+      } catch (err) {
+        showToast('❌ Failed to load menu. Is server running?', 'error');
+      }
     }
 
     function addToCart(item) {
@@ -120,14 +143,10 @@
       if (existing) {
         existing.quantity += 1;
       } else {
-        cart.push({
-          menuItemId: item._id,
-          name: item.name,
-          price: item.price,
-          quantity: 1
-        });
+        cart.push({ menuItemId: item._id, name: item.name, price: item.price, quantity: 1 });
       }
       updateCartBar();
+      showToast(`✅ ${item.name} added to cart!`, 'success');
     }
 
     function updateCartBar() {
@@ -138,36 +157,57 @@
     }
 
     async function placeOrder() {
-      if (cart.length === 0) return alert('Your cart is empty!');
+      console.log('User object:', user);
+      if (cart.length === 0) {
+        showToast('🛒 Your cart is empty!', 'error');
+        return;
+      }
 
-      const res = await fetch('http://localhost:3000/api/orders/place', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          userId: user._id || '000000000000000000000001',
-          items: cart
-        })
-      });
+      const pickupTime = getPickupTime();
+      const userId = user._id || user.id;
 
-      const data = await res.json();
-      if (res.ok) {
-        alert(`✅ Order placed successfully!\nTotal: ₹${data.order.totalPrice}\nStatus: Pending`);
-        cart = [];
-        updateCartBar();
-        loadMenu();
-      } else {
-        alert('❌ ' + data.message);
+      console.log('Sending userId:', userId);
+
+      showToast('⏳ Placing your order...', 'info');
+
+      try {
+        const res = await fetch('http://localhost:3000/api/orders/place', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            userId: userId,
+            items: cart,
+            pickupTime: pickupTime
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          showToast(`✅ Order placed! Pickup at ${pickupTime}`, 'success');
+          setTimeout(() => {
+            alert(`✅ Order Confirmed!\n🍴 Total: ₹${data.order.totalPrice}\n🕐 Pickup Time: ${pickupTime}\n📋 Status: Pending`);
+          }, 500);
+          cart = [];
+          updateCartBar();
+          loadMenu();
+        } else {
+          showToast('❌ ' + data.message, 'error');
+        }
+      } catch (err) {
+        showToast('❌ Server error! Please try again.', 'error');
       }
     }
 
     async function checkRush() {
-      const res = await fetch('http://localhost:3000/api/orders/rush-status');
-      const data = await res.json();
-      if (data.isRush) {
-        document.getElementById('rushBanner').style.display = 'block';
+      try {
+        const res = await fetch('http://localhost:3000/api/orders/rush-status');
+        const data = await res.json();
+        document.getElementById('rushBanner').style.display =
+          data.isRush ? 'block' : 'none';
+      } catch (err) {
+        console.log('Rush check failed');
       }
     }
 

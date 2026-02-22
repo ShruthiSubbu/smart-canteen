@@ -34,10 +34,53 @@
     </div>
   </div>
 
-  <!-- Orders List -->
-  <div class="orders-container">
+  <!-- Tab Navigation -->
+  <div style="max-width:900px; margin:24px auto 0; padding:0 20px;">
+    <div class="tab-row">
+      <button class="tab active" onclick="showAdminTab('orders', event)">📋 Orders</button>
+      <button class="tab" onclick="showAdminTab('demand', event)">📈 Demand</button>
+      <button class="tab" onclick="showAdminTab('addmenu', event)">➕ Add Item</button>
+      <button class="tab" onclick="showAdminTab('restock', event)">📦 Restock</button>
+    </div>
+  </div>
+
+  <!-- ORDERS TAB -->
+  <div id="tab-orders" class="orders-container">
     <h3>📋 Incoming Orders <span style="font-size:0.8rem; color:#64748b; font-weight:400;">(auto-refreshes every 10s)</span></h3>
     <div id="ordersList"></div>
+  </div>
+
+  <!-- ADD MENU ITEM TAB -->
+  <div id="tab-addmenu" class="orders-container" style="display:none;">
+    <h3>➕ Add New Menu Item</h3>
+    <div class="order-card" style="max-width:500px;">
+      <input type="text" id="newName" placeholder="Food Name" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;"/>
+      <select id="newCategory" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;">
+        <option value="breakfast">🍳 Breakfast</option>
+        <option value="lunch">🍱 Lunch</option>
+        <option value="snacks">🍿 Snacks</option>
+        <option value="beverages">☕ Beverages</option>
+      </select>
+      <input type="number" id="newPrice" placeholder="Price (₹)" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;"/>
+      <input type="number" id="newStock" placeholder="Stock Count" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;"/>
+      <button class="btn-primary" onclick="addMenuItem()">➕ Add Item</button>
+      <p id="addMsg" style="margin-top:10px;font-weight:600;"></p>
+    </div>
+  </div>
+  
+  <!-- DEMAND PREDICTION TAB -->
+  <div id="tab-demand" class="orders-container" style="display:none;">
+    <h3>📈 Demand Prediction</h3>
+    <p style="color:#64748b; margin-bottom:20px; font-size:0.9rem;">
+      Based on order frequency — most ordered items predicted to be high demand today.
+    </p>
+    <div id="demandList"></div>
+  </div>
+
+  <!-- RESTOCK TAB -->
+  <div id="tab-restock" class="orders-container" style="display:none;">
+    <h3>📦 Restock Menu Items</h3>
+    <div id="restockList"></div>
   </div>
 
   <script>
@@ -49,16 +92,31 @@
       window.location.href = 'index.html';
     }
 
-    async function loadOrders() {
+    function showAdminTab(tab, event) {
+      document.getElementById('tab-orders').style.display = tab === 'orders' ? 'block' : 'none';
+      document.getElementById('tab-demand').style.display = tab === 'demand' ? 'block' : 'none';
+      document.getElementById('tab-addmenu').style.display = tab === 'addmenu' ? 'block' : 'none';
+      document.getElementById('tab-restock').style.display = tab === 'restock' ? 'block' : 'none';
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      if (tab === 'restock') loadRestockList();
+      if (tab === 'demand') loadDemandPrediction();
+    }
+
+    async function loadStats() {
       const res = await fetch('http://localhost:3000/api/orders/all');
       const orders = await res.json();
-
-      // Update stats
       document.getElementById('totalOrders').textContent = orders.length;
       document.getElementById('pendingOrders').textContent =
         orders.filter(o => o.status === 'pending').length;
       document.getElementById('totalRevenue').textContent =
         '₹' + orders.reduce((sum, o) => sum + o.totalPrice, 0);
+    }
+
+    async function loadOrders() {
+      const res = await fetch('http://localhost:3000/api/orders/all');
+      const orders = await res.json();
+      loadStats();
 
       if (orders.length === 0) {
         document.getElementById('ordersList').innerHTML =
@@ -87,14 +145,7 @@
             </select>
           </div>`;
       });
-
       document.getElementById('ordersList').innerHTML = html;
-    }
-
-    async function checkRush() {
-      const res = await fetch('http://localhost:3000/api/orders/rush-status');
-      const data = await res.json();
-      document.getElementById('rushStatus').textContent = data.isRush ? '🔴' : '🟢';
     }
 
     async function updateStatus(orderId, status) {
@@ -104,6 +155,117 @@
         body: JSON.stringify({ status })
       });
       loadOrders();
+    }
+
+    async function addMenuItem() {
+      const name = document.getElementById('newName').value;
+      const category = document.getElementById('newCategory').value;
+      const price = document.getElementById('newPrice').value;
+      const stockCount = document.getElementById('newStock').value;
+      const msg = document.getElementById('addMsg');
+
+      if (!name || !price || !stockCount) {
+        msg.style.color = 'red';
+        msg.textContent = '❌ Please fill all fields!';
+        return;
+      }
+
+      const res = await fetch('http://localhost:3000/api/admin/menu/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, category, price: Number(price), stockCount: Number(stockCount) })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        msg.style.color = 'green';
+        msg.textContent = '✅ Item added successfully!';
+        document.getElementById('newName').value = '';
+        document.getElementById('newPrice').value = '';
+        document.getElementById('newStock').value = '';
+      } else {
+        msg.style.color = 'red';
+        msg.textContent = '❌ ' + data.message;
+      }
+    }
+    
+    async function loadDemandPrediction() {
+      const res = await fetch('http://localhost:3000/api/menu');
+      const items = await res.json();
+      const sorted = [...items].sort((a, b) => b.orderCount - a.orderCount);
+      const max = sorted[0]?.orderCount || 1;
+
+      let html = '';
+      sorted.forEach((item, index) => {
+        const pct = Math.round((item.orderCount / max) * 100);
+        const level = pct > 66 ? '🔴 High' : pct > 33 ? '🟡 Medium' : '🟢 Low';
+        html += `
+          <div class="demand-card">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong>#${index + 1} ${item.name}</strong>
+                <span style="margin-left:10px; font-size:0.8rem; color:#64748b;">${item.category}</span>
+              </div>
+              <div style="font-weight:700; font-size:0.9rem;">${level} Demand</div>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#64748b; margin-top:4px;">
+              <span>📦 Stock: ${item.stockCount}</span>
+              <span>🛒 Orders: ${item.orderCount}</span>
+            </div>
+            <div class="demand-bar-outer">
+              <div class="demand-bar-inner" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+      });
+      document.getElementById('demandList').innerHTML = html;
+    }
+
+    async function loadRestockList() {
+      const res = await fetch('http://localhost:3000/api/admin/menu');
+      const items = await res.json();
+
+      let html = '';
+      items.forEach(item => {
+        html += `
+          <div class="order-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h4>${item.name}</h4>
+              <p>📦 Current Stock: <strong>${item.stockCount}</strong></p>
+              <p>Status: <span style="color:${item.isAvailable ? 'green' : 'red'}; font-weight:700;">
+                ${item.isAvailable ? '✅ Available' : '❌ Out of Stock'}
+              </span></p>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="number" id="stock-${item._id}" value="${item.stockCount}"
+                style="width:80px; padding:8px; border:2px solid #e2e8f0; border-radius:8px; font-size:0.9rem;"/>
+              <button class="add-btn" onclick="restockItem('${item._id}')">Update</button>
+            </div>
+          </div>`;
+      });
+
+      document.getElementById('restockList').innerHTML = html;
+    }
+
+    async function restockItem(itemId) {
+      const stockCount = document.getElementById(`stock-${itemId}`).value;
+      const res = await fetch(`http://localhost:3000/api/admin/menu/restock/${itemId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stockCount: Number(stockCount) })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert('✅ Stock updated successfully!');
+        loadRestockList();
+      } else {
+        alert('❌ ' + data.message);
+      }
+    }
+
+    async function checkRush() {
+      const res = await fetch('http://localhost:3000/api/orders/rush-status');
+      const data = await res.json();
+      document.getElementById('rushStatus').textContent = data.isRush ? '🔴' : '🟢';
     }
 
     loadOrders();

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Canteen – My Orders</title>
+  <link rel="stylesheet" href="../css/style.css">
+</head>
+<body class="admin-page">
+
+  <div class="navbar">
+    <h2>🍽️ Smart Canteen</h2>
+    <span>My Orders</span>
+    <div style="display:flex; gap:10px;">
+      <button class="logout-btn" onclick="window.location.href='menu.html'">← Menu</button>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div class="orders-container">
+    <h3>📋 My Order History</h3>
+    <div id="myOrders"></div>
+  </div>
+
+  <script>
+    const user = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    if (!user || !token) window.location.href = 'index.html';
+
+    function logout() {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    }
+
+    async function loadMyOrders() {
+      const res = await fetch(`http://localhost:3000/api/orders/myorders/${user._id}`);
+      const orders = await res.json();
+
+      if (!orders.length) {
+        document.getElementById('myOrders').innerHTML =
+          '<div class="no-orders">😕 No orders yet! Go order something delicious! <br><br><a href="menu.html" style="color:#2563eb; font-weight:700;">← Go to Menu</a></div>';
+        return;
+      }
+
+      let html = '';
+      orders.forEach(order => {
+        const items = order.items.map(i => `${i.name} x${i.quantity}`).join(', ');
+        const time = new Date(order.createdAt).toLocaleString();
+        html += `
+          <div class="order-card">
+            <h4>Order #${order._id.slice(-6).toUpperCase()}</h4>
+            <p>🍴 <strong>Items:</strong> ${items}</p>
+            <p>💰 <strong>Total:</strong> ₹${order.totalPrice}</p>
+            <p>🕐 <strong>Ordered at:</strong> ${time}</p>
+            <span class="status-badge status-${order.status}">
+              ${order.status.toUpperCase()}
+            </span>
+          </div>`;
+      });
+
+      document.getElementById('myOrders').innerHTML = html;
+    }
+
+    loadMyOrders();
+    setInterval(loadMyOrders, 15000);
+  </script>
+
+</body>
+</html>

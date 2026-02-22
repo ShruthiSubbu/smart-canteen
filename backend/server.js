@@ -19,6 +19,9 @@ app.use('/api/menu', menuRoutes);
 const orderRoutes = require('./routes/orders');
 app.use('/api/orders', orderRoutes);
 
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
 app.get('/', (req, res) => {
   res.json({ message: 'Smart Canteen Server is running! 🍽️' });
 });
