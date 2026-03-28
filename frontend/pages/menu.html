@@ -113,7 +113,7 @@ console.log('Loaded user:', user);
     
     async function loadMenu() {
       try {
-        const res = await fetch('http://localhost:3000/api/menu');
+        const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/menu');
         allItems = await res.json();
 
         // Recommendations — top 3 by orderCount
@@ -171,7 +171,7 @@ console.log('Loaded user:', user);
       showToast('⏳ Placing your order...', 'info');
 
       try {
-        const res = await fetch('http://localhost:3000/api/orders/place', {
+        const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/place', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -202,7 +202,7 @@ console.log('Loaded user:', user);
 
     async function checkRush() {
       try {
-        const res = await fetch('http://localhost:3000/api/orders/rush-status');
+        const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/rush-status');
         const data = await res.json();
         document.getElementById('rushBanner').style.display =
           data.isRush ? 'block' : 'none';

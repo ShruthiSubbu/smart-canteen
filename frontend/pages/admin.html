@@ -104,7 +104,7 @@
     }
 
     async function loadStats() {
-      const res = await fetch('http://localhost:3000/api/orders/all');
+      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/all');
       const orders = await res.json();
       document.getElementById('totalOrders').textContent = orders.length;
       document.getElementById('pendingOrders').textContent =
@@ -114,7 +114,7 @@
     }
 
     async function loadOrders() {
-      const res = await fetch('http://localhost:3000/api/orders/all');
+      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/all');
       const orders = await res.json();
       loadStats();
 
@@ -149,7 +149,7 @@
     }
 
     async function updateStatus(orderId, status) {
-      await fetch(`http://localhost:3000/api/orders/status/${orderId}`, {
+      await fetch(`https://smart-canteen-jt0d.onrender.com/api/orders/status/${orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
@@ -170,7 +170,7 @@
         return;
       }
 
-      const res = await fetch('http://localhost:3000/api/admin/menu/add', {
+      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/admin/menu/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, category, price: Number(price), stockCount: Number(stockCount) })
@@ -190,7 +190,7 @@
     }
     
     async function loadDemandPrediction() {
-      const res = await fetch('http://localhost:3000/api/menu');
+      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/menu');
       const items = await res.json();
       const sorted = [...items].sort((a, b) => b.orderCount - a.orderCount);
       const max = sorted[0]?.orderCount || 1;
@@ -221,7 +221,7 @@
     }
 
     async function loadRestockList() {
-      const res = await fetch('http://localhost:3000/api/admin/menu');
+      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/admin/menu');
       const items = await res.json();
 
       let html = '';
@@ -248,7 +248,7 @@
 
     async function restockItem(itemId) {
       const stockCount = document.getElementById(`stock-${itemId}`).value;
-      const res = await fetch(`http://localhost:3000/api/admin/menu/restock/${itemId}`, {
+      const res = await fetch(`https://smart-canteen-jt0d.onrender.com/api/admin/menu/restock/${itemId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stockCount: Number(stockCount) })
@@ -263,7 +263,7 @@
     }
 
     async function checkRush() {
-      const res = await fetch('http://localhost:3000/api/orders/rush-status');
+      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/rush-status');
       const data = await res.json();
       document.getElementById('rushStatus').textContent = data.isRush ? '🔴' : '🟢';
     }

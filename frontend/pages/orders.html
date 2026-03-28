@@ -33,7 +33,7 @@
     }
 
     async function loadMyOrders() {
-      const res = await fetch(`http://localhost:3000/api/orders/myorders/${user._id}`);
+      const res = await fetch(`https://smart-canteen-jt0d.onrender.com/api/orders/myorders/${user._id}`);
       const orders = await res.json();
 
       if (!orders.length) {
