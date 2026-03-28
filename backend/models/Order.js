@@ -1,36 +1,31 @@
+// backend/models/Order.js
 const mongoose = require('mongoose');
 
-const orderSchema = new mongoose.Schema({
-  userId: {
-    type: String,
-    required: true
-  },
-  items: [
-    {
-      menuItem: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'MenuItem'
-      },
-      name: String,
-      price: Number,
-      quantity: {
-        type: Number,
-        default: 1
-      }
-    }
-  ],
-  totalPrice: {
-    type: Number,
-    required: true
-  },
+const OrderSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+
+  items: [{
+    menuItemId: { type: String },
+    name:       { type: String, required: true },
+    price:      { type: Number, required: true },
+    quantity:   { type: Number, required: true }
+  }],
+
+  total:      { type: Number, required: true },
+  pickupTime: { type: String },
+
   status: {
     type: String,
-    enum: ['pending', 'preparing', 'ready', 'completed'],
-    default: 'pending'
+    enum: ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'],
+    default: 'Pending'
   },
-  pickupTime: {
-    type: String
-  }
+
+  // Full audit trail of every status change
+  statusHistory: [{
+    status:    { type: String },
+    changedAt: { type: Date, default: Date.now }
+  }]
+
 }, { timestamps: true });
 
-module.exports = mongoose.model('Order', orderSchema);
+module.exports = mongoose.model('Order', OrderSchema);

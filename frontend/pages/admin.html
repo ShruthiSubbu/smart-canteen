@@ -1,278 +1,517 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Canteen – Admin Dashboard</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard — Smart Canteen</title>
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
-<body class="admin-page">
+<body>
 
-  <div class="navbar">
-    <h2>🍽️ Smart Canteen – Admin</h2>
-    <span>Dashboard</span>
-    <button class="logout-btn" onclick="logout()">Logout</button>
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="logo-icon">🍛</div>
+    Smart Canteen
+    <span style="font-size:0.72rem;font-weight:600;background:var(--saffron);color:white;padding:2px 8px;border-radius:99px;margin-left:4px">ADMIN</span>
   </div>
-
-  <!-- Stats Row -->
-  <div class="admin-stats">
-    <div class="stat-card">
-      <div class="stat-number" id="totalOrders">0</div>
-      <div class="stat-label">📋 Total Orders</div>
+  <ul class="navbar-nav">
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="orders.html">Orders</a></li>
+    <li><a href="admin.html" class="active">Dashboard</a></li>
+  </ul>
+  <div class="navbar-right">
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar">A</div>
+      <span id="user-name">Admin</span>
     </div>
-    <div class="stat-card">
-      <div class="stat-number" id="pendingOrders">0</div>
-      <div class="stat-label">⏳ Pending</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number" id="totalRevenue">₹0</div>
-      <div class="stat-label">💰 Total Revenue</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-number" id="rushStatus">🟢</div>
-      <div class="stat-label">Rush Hour Status</div>
-    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
   </div>
+</nav>
 
-  <!-- Tab Navigation -->
-  <div style="max-width:900px; margin:24px auto 0; padding:0 20px;">
-    <div class="tab-row">
-      <button class="tab active" onclick="showAdminTab('orders', event)">📋 Orders</button>
-      <button class="tab" onclick="showAdminTab('demand', event)">📈 Demand</button>
-      <button class="tab" onclick="showAdminTab('addmenu', event)">➕ Add Item</button>
-      <button class="tab" onclick="showAdminTab('restock', event)">📦 Restock</button>
-    </div>
-  </div>
-
-  <!-- ORDERS TAB -->
-  <div id="tab-orders" class="orders-container">
-    <h3>📋 Incoming Orders <span style="font-size:0.8rem; color:#64748b; font-weight:400;">(auto-refreshes every 10s)</span></h3>
-    <div id="ordersList"></div>
-  </div>
-
-  <!-- ADD MENU ITEM TAB -->
-  <div id="tab-addmenu" class="orders-container" style="display:none;">
-    <h3>➕ Add New Menu Item</h3>
-    <div class="order-card" style="max-width:500px;">
-      <input type="text" id="newName" placeholder="Food Name" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;"/>
-      <select id="newCategory" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;">
-        <option value="breakfast">🍳 Breakfast</option>
-        <option value="lunch">🍱 Lunch</option>
-        <option value="snacks">🍿 Snacks</option>
-        <option value="beverages">☕ Beverages</option>
-      </select>
-      <input type="number" id="newPrice" placeholder="Price (₹)" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;"/>
-      <input type="number" id="newStock" placeholder="Stock Count" style="width:100%;padding:12px;margin-bottom:12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.95rem;outline:none;"/>
-      <button class="btn-primary" onclick="addMenuItem()">➕ Add Item</button>
-      <p id="addMsg" style="margin-top:10px;font-weight:600;"></p>
+<!-- ── STATS ROW ── -->
+<div style="background:linear-gradient(135deg,var(--teal) 0%,var(--teal-dark) 100%);padding:1.8rem 1.5rem 1.5rem;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <h1 style="font-family:var(--font-heading);color:white;font-size:1.5rem;margin-bottom:1.2rem;opacity:0.95">Dashboard Overview</h1>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon orange">📋</div>
+        <div class="stat-info">
+          <div class="stat-label">Total Orders</div>
+          <div class="stat-value" id="totalOrders">—</div>
+          <div class="stat-sub">all time</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow">⏳</div>
+        <div class="stat-info">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" id="pendingOrders">—</div>
+          <div class="stat-sub">needs action</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">💰</div>
+        <div class="stat-info">
+          <div class="stat-label">Revenue</div>
+          <div class="stat-value" id="totalRevenue">—</div>
+          <div class="stat-sub">total collected</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon teal">⚡</div>
+        <div class="stat-info">
+          <div class="stat-label">Rush Hour</div>
+          <div class="stat-value" id="rushStatus" style="font-size:1.1rem">Checking…</div>
+          <div class="stat-sub">last 15 mins</div>
+        </div>
+      </div>
     </div>
   </div>
-  
-  <!-- DEMAND PREDICTION TAB -->
-  <div id="tab-demand" class="orders-container" style="display:none;">
-    <h3>📈 Demand Prediction</h3>
-    <p style="color:#64748b; margin-bottom:20px; font-size:0.9rem;">
-      Based on order frequency — most ordered items predicted to be high demand today.
-    </p>
-    <div id="demandList"></div>
+</div>
+
+<!-- ── TAB NAV ── -->
+<div class="admin-tabs">
+  <button class="admin-tab active" onclick="showTab('orders', this)">📋 Orders</button>
+  <button class="admin-tab" onclick="showTab('demand', this)">📈 Demand</button>
+  <button class="admin-tab" onclick="showTab('addmenu', this)">➕ Add Item</button>
+  <button class="admin-tab" onclick="showTab('restock', this)">📦 Restock</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     ORDERS TAB
+══════════════════════════════════════════════════ -->
+<div id="tab-orders" class="page-content">
+  <div class="section-header">
+    <h2 class="section-title">Incoming Orders</h2>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:0.78rem;color:var(--text-muted)" id="orders-refresh-label">Auto-refreshes every 10s</span>
+      <button class="btn btn-outline btn-sm" onclick="loadOrders()">↻ Refresh</button>
+    </div>
   </div>
-
-  <!-- RESTOCK TAB -->
-  <div id="tab-restock" class="orders-container" style="display:none;">
-    <h3>📦 Restock Menu Items</h3>
-    <div id="restockList"></div>
+  <div id="admin-orders-container">
+    <div class="spinner"></div>
   </div>
+</div>
 
-  <script>
-    const user = JSON.parse(localStorage.getItem('user'));
-    if (!user || user.role !== 'admin') window.location.href = 'index.html';
+<!-- ══════════════════════════════════════════════════
+     DEMAND TAB
+══════════════════════════════════════════════════ -->
+<div id="tab-demand" class="page-content" style="display:none">
+  <div class="section-header">
+    <h2 class="section-title">Demand Prediction</h2>
+  </div>
+  <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:1.5rem;margin-top:-0.5rem">
+    Based on order frequency — items ranked by how often they've been ordered.
+  </p>
+  <div id="demandList"></div>
+</div>
 
-    function logout() {
-      localStorage.clear();
-      window.location.href = 'index.html';
-    }
+<!-- ══════════════════════════════════════════════════
+     ADD ITEM TAB
+══════════════════════════════════════════════════ -->
+<div id="tab-addmenu" class="page-content" style="display:none">
+  <div class="section-header">
+    <h2 class="section-title">Add New Menu Item</h2>
+  </div>
+  <div class="add-item-form">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Item Name</label>
+        <input type="text" id="newName" placeholder="e.g. Masala Dosa" />
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="newCategory">
+          <option value="Breakfast">🌅 Breakfast</option>
+          <option value="Lunch">🍽 Lunch</option>
+          <option value="Snacks">🥪 Snacks</option>
+          <option value="Beverages">☕ Beverages</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Price (₹)</label>
+        <input type="number" id="newPrice" placeholder="e.g. 40" min="1" />
+      </div>
+      <div class="form-group">
+        <label>Stock Count</label>
+        <input type="number" id="newStock" placeholder="e.g. 50" min="0" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Description (optional)</label>
+      <textarea id="newDesc" placeholder="Short description of the item…"></textarea>
+    </div>
+    <button class="btn btn-primary btn-lg" onclick="addMenuItem()">➕ Add Item</button>
+    <div id="addMsg" style="margin-top:12px;font-size:0.88rem;font-weight:600"></div>
+  </div>
+</div>
 
-    function showAdminTab(tab, event) {
-      document.getElementById('tab-orders').style.display = tab === 'orders' ? 'block' : 'none';
-      document.getElementById('tab-demand').style.display = tab === 'demand' ? 'block' : 'none';
-      document.getElementById('tab-addmenu').style.display = tab === 'addmenu' ? 'block' : 'none';
-      document.getElementById('tab-restock').style.display = tab === 'restock' ? 'block' : 'none';
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      event.target.classList.add('active');
-      if (tab === 'restock') loadRestockList();
-      if (tab === 'demand') loadDemandPrediction();
-    }
+<!-- ══════════════════════════════════════════════════
+     RESTOCK TAB
+══════════════════════════════════════════════════ -->
+<div id="tab-restock" class="page-content" style="display:none">
+  <div class="section-header">
+    <h2 class="section-title">Restock Items</h2>
+    <button class="btn btn-outline btn-sm" onclick="loadRestockList()">↻ Refresh</button>
+  </div>
+  <div id="restockList">
+    <div class="spinner"></div>
+  </div>
+</div>
 
-    async function loadStats() {
-      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/all');
+<!-- ── TOAST ── -->
+<div id="toast-container"></div>
+
+<script>
+  const API   = 'https://smart-canteen-jt0d.onrender.com';
+  const token = localStorage.getItem('token');
+  const user  = JSON.parse(localStorage.getItem('user') || '{}');
+
+  // ── Auth guard ────────────────────────────────────────────────
+  if (!user || user.role !== 'admin') window.location.href = 'index.html';
+
+  if (user.name) {
+    document.getElementById('user-name').textContent = user.name.split(' ')[0];
+    document.getElementById('user-avatar').textContent = user.name[0].toUpperCase();
+  }
+
+  function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+  // ── Toast ─────────────────────────────────────────────────────
+  function toast(msg, type = 'info') {
+    const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3500);
+  }
+
+  // ── Tab switching ─────────────────────────────────────────────
+  function showTab(tab, btn) {
+    ['orders','demand','addmenu','restock'].forEach(t => {
+      document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
+    });
+    document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    if (tab === 'restock') loadRestockList();
+    if (tab === 'demand')  loadDemandPrediction();
+  }
+
+  // ── Status config ─────────────────────────────────────────────
+  const STATUS_OPTIONS = ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
+  const STATUS_COLORS  = {
+    Pending:   'status-pending',
+    Preparing: 'status-preparing',
+    Ready:     'status-ready',
+    Completed: 'status-completed',
+    Cancelled: 'status-cancelled'
+  };
+  const STATUS_ICONS = {
+    Pending: '⏳', Preparing: '👨‍🍳', Ready: '🔔', Completed: '✅', Cancelled: '❌'
+  };
+
+  // ── Load stats ────────────────────────────────────────────────
+  async function loadStats(orders) {
+    document.getElementById('totalOrders').textContent = orders.length;
+    document.getElementById('pendingOrders').textContent =
+      orders.filter(o => o.status === 'Pending').length;
+    const rev = orders.reduce((sum, o) => sum + (o.total || o.totalPrice || 0), 0);
+    document.getElementById('totalRevenue').textContent = '₹' + rev;
+  }
+
+  // ── Load orders ───────────────────────────────────────────────
+  async function loadOrders() {
+    try {
+      // Try new route first, fall back to old route
+      let res = await fetch(`${API}/orders`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // fallback if old API
+      if (!res.ok) res = await fetch(`${API}/api/orders/all`);
       const orders = await res.json();
-      document.getElementById('totalOrders').textContent = orders.length;
-      document.getElementById('pendingOrders').textContent =
-        orders.filter(o => o.status === 'pending').length;
-      document.getElementById('totalRevenue').textContent =
-        '₹' + orders.reduce((sum, o) => sum + o.totalPrice, 0);
-    }
 
-    async function loadOrders() {
-      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/all');
-      const orders = await res.json();
-      loadStats();
+      loadStats(orders);
 
-      if (orders.length === 0) {
-        document.getElementById('ordersList').innerHTML =
-          '<div class="no-orders">🎉 No orders yet! Waiting for students...</div>';
-        return;
-      }
+      const container = document.getElementById('admin-orders-container');
 
-      let html = '';
-      orders.forEach(order => {
-        const items = order.items.map(i => `${i.name} x${i.quantity}`).join(', ');
-        const time = new Date(order.createdAt).toLocaleTimeString();
-        html += `
-          <div class="order-card">
-            <h4>Order #${order._id.slice(-6).toUpperCase()}</h4>
-            <p>🍴 <strong>Items:</strong> ${items}</p>
-            <p>💰 <strong>Total:</strong> ₹${order.totalPrice}</p>
-            <p>🕐 <strong>Time:</strong> ${time}</p>
-            <span class="status-badge status-${order.status}">
-              ${order.status.toUpperCase()}
-            </span><br/>
-            <select class="status-select" onchange="updateStatus('${order._id}', this.value)">
-              <option value="pending" ${order.status==='pending'?'selected':''}>⏳ Pending</option>
-              <option value="preparing" ${order.status==='preparing'?'selected':''}>👨‍🍳 Preparing</option>
-              <option value="ready" ${order.status==='ready'?'selected':''}>✅ Ready</option>
-              <option value="completed" ${order.status==='completed'?'selected':''}>🎉 Completed</option>
-            </select>
+      if (!orders.length) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:4rem 2rem;color:var(--text-muted)">
+            <div style="font-size:2.5rem;margin-bottom:1rem">🎉</div>
+            <h3 style="font-family:var(--font-heading);margin-bottom:0.4rem;color:var(--text)">No orders yet</h3>
+            <p style="font-size:0.88rem">Waiting for students to place orders…</p>
           </div>`;
-      });
-      document.getElementById('ordersList').innerHTML = html;
-    }
-
-    async function updateStatus(orderId, status) {
-      await fetch(`https://smart-canteen-jt0d.onrender.com/api/orders/status/${orderId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status })
-      });
-      loadOrders();
-    }
-
-    async function addMenuItem() {
-      const name = document.getElementById('newName').value;
-      const category = document.getElementById('newCategory').value;
-      const price = document.getElementById('newPrice').value;
-      const stockCount = document.getElementById('newStock').value;
-      const msg = document.getElementById('addMsg');
-
-      if (!name || !price || !stockCount) {
-        msg.style.color = 'red';
-        msg.textContent = '❌ Please fill all fields!';
         return;
       }
 
-      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/admin/menu/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, category, price: Number(price), stockCount: Number(stockCount) })
-      });
+      container.innerHTML = `
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Order ID</th>
+                <th>Items</th>
+                <th>Total</th>
+                <th>Pickup</th>
+                <th>Time</th>
+                <th>Status</th>
+                <th>Update Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${orders.map(order => {
+                const items = order.items.map(i => `${i.name} ×${i.quantity}`).join(', ');
+                const time  = new Date(order.createdAt).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+                const status = order.status || 'Pending';
+                return `
+                <tr id="row-${order._id}">
+                  <td><span style="font-weight:700;font-size:0.8rem;color:var(--teal)">#${order._id.slice(-6).toUpperCase()}</span></td>
+                  <td style="font-size:0.82rem;max-width:200px;white-space:normal;line-height:1.4">${items}</td>
+                  <td style="font-weight:700;color:var(--saffron-dark)">₹${order.total || order.totalPrice || 0}</td>
+                  <td style="font-size:0.82rem;color:var(--text-muted)">${order.pickupTime || 'ASAP'}</td>
+                  <td style="font-size:0.78rem;color:var(--text-muted)">${time}</td>
+                  <td>
+                    <span class="status-badge ${STATUS_COLORS[status] || 'status-pending'}" id="badge-${order._id}">
+                      ${STATUS_ICONS[status] || '⏳'} ${status}
+                    </span>
+                  </td>
+                  <td>
+                    <select
+                      onchange="updateStatus('${order._id}', this.value, this)"
+                      style="padding:6px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:0.82rem;outline:none;background:var(--surface);cursor:pointer;color:var(--text)"
+                    >
+                      ${STATUS_OPTIONS.map(s => `<option value="${s}" ${s === status ? 'selected' : ''}>${STATUS_ICONS[s]} ${s}</option>`).join('')}
+                    </select>
+                  </td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>`;
 
+      const now = new Date().toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
+      document.getElementById('orders-refresh-label').textContent = `Last updated ${now} · auto-refreshes every 10s`;
+
+    } catch (err) {
+      console.error(err);
+      toast('Failed to load orders', 'error');
+    }
+  }
+
+  // ── Update order status ───────────────────────────────────────
+  async function updateStatus(orderId, newStatus, selectEl) {
+    selectEl.disabled = true;
+    try {
+      // Try new PATCH route first, fall back to old PUT route
+      let res = await fetch(`${API}/orders/${orderId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (!res.ok) {
+        res = await fetch(`${API}/api/orders/status/${orderId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus.toLowerCase() })
+        });
+      }
+      if (!res.ok) throw new Error('Update failed');
+
+      // Update badge in-place
+      const badge = document.getElementById(`badge-${orderId}`);
+      if (badge) {
+        badge.className = `status-badge ${STATUS_COLORS[newStatus] || 'status-pending'}`;
+        badge.innerHTML = `${STATUS_ICONS[newStatus] || ''} ${newStatus}`;
+      }
+
+      // Flash row
+      const row = document.getElementById(`row-${orderId}`);
+      if (row) {
+        row.style.background = 'var(--green-pale)';
+        setTimeout(() => { row.style.background = ''; }, 1200);
+      }
+
+      toast(`Order updated to "${newStatus}"`, 'success');
+    } catch (err) {
+      toast('Failed to update status', 'error');
+    } finally {
+      selectEl.disabled = false;
+    }
+  }
+
+  // ── Add menu item ─────────────────────────────────────────────
+  async function addMenuItem() {
+    const name     = document.getElementById('newName').value.trim();
+    const category = document.getElementById('newCategory').value;
+    const price    = document.getElementById('newPrice').value;
+    const stock    = document.getElementById('newStock').value;
+    const desc     = document.getElementById('newDesc').value.trim();
+    const msg      = document.getElementById('addMsg');
+
+    if (!name || !price || !stock) {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '❌ Please fill in name, price and stock.';
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API}/api/admin/menu/add`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ name, category, price: Number(price), stockCount: Number(stock), description: desc })
+      });
       const data = await res.json();
       if (res.ok) {
-        msg.style.color = 'green';
+        msg.style.color = 'var(--green)';
         msg.textContent = '✅ Item added successfully!';
-        document.getElementById('newName').value = '';
+        document.getElementById('newName').value  = '';
         document.getElementById('newPrice').value = '';
         document.getElementById('newStock').value = '';
+        document.getElementById('newDesc').value  = '';
+        toast(`"${name}" added to menu`, 'success');
       } else {
-        msg.style.color = 'red';
+        msg.style.color = 'var(--red)';
         msg.textContent = '❌ ' + data.message;
       }
+    } catch (err) {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '❌ Server error. Try again.';
     }
-    
-    async function loadDemandPrediction() {
-      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/menu');
+  }
+
+  // ── Demand prediction ─────────────────────────────────────────
+  async function loadDemandPrediction() {
+    document.getElementById('demandList').innerHTML = '<div class="spinner"></div>';
+    try {
+      const res   = await fetch(`${API}/api/menu`);
       const items = await res.json();
       const sorted = [...items].sort((a, b) => b.orderCount - a.orderCount);
       const max = sorted[0]?.orderCount || 1;
 
-      let html = '';
-      sorted.forEach((item, index) => {
-        const pct = Math.round((item.orderCount / max) * 100);
-        const level = pct > 66 ? '🔴 High' : pct > 33 ? '🟡 Medium' : '🟢 Low';
-        html += `
-          <div class="demand-card">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <strong>#${index + 1} ${item.name}</strong>
-                <span style="margin-left:10px; font-size:0.8rem; color:#64748b;">${item.category}</span>
+      const html = sorted.map((item, i) => {
+        const pct   = Math.round((item.orderCount / max) * 100);
+        const level = pct > 66 ? { label: 'High', color: 'var(--red)', bg: '#FEE2E2' }
+                    : pct > 33 ? { label: 'Medium', color: 'var(--yellow)', bg: '#FFFFF0' }
+                    :            { label: 'Low', color: 'var(--green)', bg: 'var(--green-pale)' };
+
+        return `
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.9rem;transition:box-shadow 0.2s">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px 10px;font-size:0.78rem;font-weight:700;color:var(--text-muted)">#${i + 1}</span>
+                <div>
+                  <div style="font-family:var(--font-heading);font-size:0.98rem;font-weight:600">${item.name}</div>
+                  <div style="font-size:0.75rem;color:var(--text-muted)">${item.category}</div>
+                </div>
               </div>
-              <div style="font-weight:700; font-size:0.9rem;">${level} Demand</div>
+              <span style="background:${level.bg};color:${level.color};padding:4px 12px;border-radius:99px;font-size:0.75rem;font-weight:700">${level.label} Demand</span>
             </div>
-            <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#64748b; margin-top:4px;">
-              <span>📦 Stock: ${item.stockCount}</span>
-              <span>🛒 Orders: ${item.orderCount}</span>
+            <div class="demand-bar-wrap">
+              <div class="demand-bar-bg">
+                <div class="demand-bar-fill" style="width:${pct}%"></div>
+              </div>
+              <span class="demand-bar-count">${item.orderCount}</span>
             </div>
-            <div class="demand-bar-outer">
-              <div class="demand-bar-inner" style="width:${pct}%"></div>
+            <div style="display:flex;gap:1.5rem;margin-top:8px;font-size:0.78rem;color:var(--text-muted)">
+              <span>📦 Stock: <strong style="color:var(--text)">${item.stock ?? item.stockCount ?? 0}</strong></span>
+              <span>💰 Price: <strong style="color:var(--text)">₹${item.price}</strong></span>
+              <span>🛒 Orders: <strong style="color:var(--text)">${item.orderCount}</strong></span>
             </div>
           </div>`;
-      });
-      document.getElementById('demandList').innerHTML = html;
-    }
+      }).join('');
 
-    async function loadRestockList() {
-      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/admin/menu');
+      document.getElementById('demandList').innerHTML = html || '<p class="text-muted">No menu items found.</p>';
+    } catch (err) {
+      document.getElementById('demandList').innerHTML = '<p class="text-muted">Failed to load demand data.</p>';
+    }
+  }
+
+  // ── Restock ───────────────────────────────────────────────────
+  async function loadRestockList() {
+    document.getElementById('restockList').innerHTML = '<div class="spinner"></div>';
+    try {
+      const res   = await fetch(`${API}/api/admin/menu`, { headers: { Authorization: `Bearer ${token}` } });
       const items = await res.json();
 
-      let html = '';
-      items.forEach(item => {
-        html += `
-          <div class="order-card" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+      const html = items.map(item => {
+        const stock     = item.stock ?? item.stockCount ?? 0;
+        const available = item.available ?? item.isAvailable ?? stock > 0;
+        return `
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.9rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px">
             <div>
-              <h4>${item.name}</h4>
-              <p>📦 Current Stock: <strong>${item.stockCount}</strong></p>
-              <p>Status: <span style="color:${item.isAvailable ? 'green' : 'red'}; font-weight:700;">
-                ${item.isAvailable ? '✅ Available' : '❌ Out of Stock'}
-              </span></p>
+              <div style="font-family:var(--font-heading);font-size:1rem;font-weight:600;margin-bottom:3px">${item.name}</div>
+              <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:4px">${item.category} · ₹${item.price}</div>
+              <div style="font-size:0.82rem">
+                Stock: <strong style="color:${stock < 10 ? 'var(--red)' : 'var(--text)'}">${stock}</strong>
+                &nbsp;·&nbsp;
+                <span style="color:${available ? 'var(--green)' : 'var(--red)'};font-weight:600">${available ? '✅ Available' : '❌ Out of Stock'}</span>
+              </div>
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input type="number" id="stock-${item._id}" value="${item.stockCount}"
-                style="width:80px; padding:8px; border:2px solid #e2e8f0; border-radius:8px; font-size:0.9rem;"/>
-              <button class="add-btn" onclick="restockItem('${item._id}')">Update</button>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input
+                type="number" id="stock-${item._id}" value="${stock}" min="0"
+                style="width:90px;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:0.9rem;outline:none;background:var(--bg)"
+                onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'"
+              />
+              <button class="btn btn-teal btn-sm" onclick="restockItem('${item._id}', '${item.name}')">Update</button>
             </div>
           </div>`;
-      });
+      }).join('');
 
-      document.getElementById('restockList').innerHTML = html;
+      document.getElementById('restockList').innerHTML = html || '<p class="text-muted">No items found.</p>';
+    } catch (err) {
+      document.getElementById('restockList').innerHTML = '<p class="text-muted">Failed to load items.</p>';
     }
+  }
 
-    async function restockItem(itemId) {
-      const stockCount = document.getElementById(`stock-${itemId}`).value;
-      const res = await fetch(`https://smart-canteen-jt0d.onrender.com/api/admin/menu/restock/${itemId}`, {
+  async function restockItem(itemId, itemName) {
+    const stockVal = document.getElementById(`stock-${itemId}`).value;
+    try {
+      const res = await fetch(`${API}/api/admin/menu/restock/${itemId}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stockCount: Number(stockCount) })
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ stockCount: Number(stockVal) })
       });
       const data = await res.json();
       if (res.ok) {
-        alert('✅ Stock updated successfully!');
+        toast(`"${itemName}" restocked to ${stockVal}`, 'success');
         loadRestockList();
       } else {
-        alert('❌ ' + data.message);
+        toast('❌ ' + data.message, 'error');
       }
+    } catch (err) {
+      toast('Server error. Try again.', 'error');
     }
+  }
 
-    async function checkRush() {
-      const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/rush-status');
+  // ── Rush hour check ───────────────────────────────────────────
+  async function checkRush() {
+    try {
+      const res  = await fetch(`${API}/api/orders/rush-status`);
       const data = await res.json();
-      document.getElementById('rushStatus').textContent = data.isRush ? '🔴' : '🟢';
+      const el   = document.getElementById('rushStatus');
+      if (data.isRush) {
+        el.textContent = '🔴 RUSH';
+        el.style.color = 'var(--red)';
+      } else {
+        el.textContent = '🟢 Normal';
+        el.style.color = 'var(--green)';
+      }
+    } catch (_) {
+      document.getElementById('rushStatus').textContent = '—';
     }
+  }
 
-    loadOrders();
-    checkRush();
-    setInterval(loadOrders, 10000);
-    setInterval(checkRush, 15000);
-  </script>
+  // ── Init ──────────────────────────────────────────────────────
+  loadOrders();
+  checkRush();
+  setInterval(loadOrders, 10000);
+  setInterval(checkRush, 15000);
+</script>
 
 </body>
 </html>

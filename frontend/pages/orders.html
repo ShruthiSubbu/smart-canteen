@@ -1,69 +1,378 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Smart Canteen – My Orders</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Orders — Smart Canteen</title>
+  <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* ── Extra styles specific to orders page ── */
+    .orders-page { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+    .live-indicator {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; font-weight: 600; color: var(--green);
+      background: var(--green-pale); border: 1px solid rgba(47,133,90,0.2);
+      border-radius: 99px; padding: 3px 10px;
+    }
+    .live-dot {
+      width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+      animation: dot-pulse 2s infinite;
+    }
+
+    .order-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); margin-bottom: 1.2rem; overflow: hidden; transition: box-shadow 0.2s; }
+    .order-card:hover { box-shadow: var(--shadow-md); }
+
+    .order-header {
+      padding: 1rem 1.3rem; background: var(--bg); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;
+    }
+    .order-header-left { display: flex; flex-direction: column; gap: 2px; }
+    .order-id-label { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .order-date-label { font-size: 0.78rem; color: var(--text-light); }
+
+    /* ── STATUS TRACKER ── */
+    .tracker-wrap { padding: 1.2rem 1.5rem 0.8rem; }
+    .tracker {
+      display: flex; align-items: flex-start; position: relative;
+    }
+    .tracker-step {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      position: relative; z-index: 1;
+    }
+    /* connecting line */
+    .tracker-step:not(:last-child)::after {
+      content: ''; position: absolute;
+      top: 14px; left: 50%; width: 100%; height: 2px;
+      background: var(--border); z-index: 0; transition: background 0.4s;
+    }
+    .tracker-step.done:not(:last-child)::after  { background: var(--green); }
+    .tracker-step.active:not(:last-child)::after { background: linear-gradient(to right, var(--green), var(--border)); }
+
+    .tracker-dot {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: var(--bg); border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; position: relative; z-index: 2;
+      transition: all 0.3s;
+    }
+    .tracker-step.done .tracker-dot   { background: var(--green); border-color: var(--green); color: white; }
+    .tracker-step.active .tracker-dot { background: var(--saffron); border-color: var(--saffron); color: white; box-shadow: 0 0 0 5px rgba(244,131,31,0.18); animation: pulse-tracker 1.6s infinite; }
+    .tracker-step.cancelled .tracker-dot { background: var(--red); border-color: var(--red); color: white; }
+
+    @keyframes pulse-tracker {
+      0%,100% { box-shadow: 0 0 0 5px rgba(244,131,31,0.18); }
+      50%      { box-shadow: 0 0 0 10px rgba(244,131,31,0); }
+    }
+
+    .tracker-label {
+      font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
+      margin-top: 6px; text-align: center; white-space: nowrap;
+    }
+    .tracker-step.done .tracker-label     { color: var(--green); }
+    .tracker-step.active .tracker-label   { color: var(--saffron-dark); }
+    .tracker-step.cancelled .tracker-label { color: var(--red); }
+
+    .tracker-time {
+      font-size: 0.65rem; color: var(--text-light);
+      margin-top: 2px; text-align: center;
+    }
+
+    /* ── STATUS BANNER (inside card) ── */
+    .status-banner {
+      margin: 0 1.3rem 1rem;
+      padding: 9px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-banner.pending   { background: #FEF3C7; color: #92400E; border: 1px solid rgba(214,158,46,0.3); }
+    .status-banner.preparing { background: #DBEAFE; color: #1E3A5F; border: 1px solid rgba(56,97,161,0.2); }
+    .status-banner.ready     { background: var(--green-pale); color: var(--green); border: 1px solid rgba(47,133,90,0.2); }
+    .status-banner.completed { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
+    .status-banner.cancelled { background: #FEE2E2; color: var(--red); border: 1px solid rgba(229,62,62,0.2); }
+
+    /* ── ORDER ITEMS LIST ── */
+    .order-items { padding: 0 1.3rem 0.5rem; }
+    .order-items-header { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .order-item-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem;
+    }
+    .order-item-row:last-child { border-bottom: none; }
+    .order-item-name { color: var(--text); }
+    .order-item-qty  { font-size: 0.8rem; color: var(--text-muted); margin-left: 6px; }
+    .order-item-price { font-weight: 600; color: var(--text); }
+
+    /* ── ORDER FOOTER ── */
+    .order-footer {
+      padding: 0.9rem 1.3rem; border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 0.5rem; background: var(--bg);
+    }
+    .order-pickup { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+    .order-total-row { display: flex; align-items: center; gap: 10px; }
+    .order-total-label { font-size: 0.82rem; color: var(--text-muted); }
+    .order-total-amt { font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700; color: var(--saffron-dark); }
+
+    /* ── EMPTY STATE ── */
+    .empty-state { text-align: center; padding: 5rem 2rem; color: var(--text-muted); }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
+    .empty-state h3 { font-family: var(--font-heading); font-size: 1.2rem; color: var(--text); margin-bottom: 0.5rem; }
+    .empty-state p  { font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+    /* ── LOADING SKELETONS ── */
+    .skeleton-order { height: 200px; border-radius: var(--radius); margin-bottom: 1.2rem; }
+  </style>
 </head>
-<body class="admin-page">
+<body>
 
-  <div class="navbar">
-    <h2>🍽️ Smart Canteen</h2>
-    <span>My Orders</span>
-    <div style="display:flex; gap:10px;">
-      <button class="logout-btn" onclick="window.location.href='menu.html'">← Menu</button>
-      <button class="logout-btn" onclick="logout()">Logout</button>
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="logo-icon">🍛</div>
+    Smart Canteen
+  </div>
+  <ul class="navbar-nav">
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="orders.html" class="active">My Orders</a></li>
+    <li><a href="profile.html">Profile</a></li>
+  </ul>
+  <div class="navbar-right">
+    <span class="live-indicator"><span class="live-dot"></span>Live updates</span>
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar">S</div>
+      <span id="user-name">Student</span>
     </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ── PAGE HERO ── -->
+<div class="page-hero" style="padding:2rem 2rem 1.8rem">
+  <h1>My Orders</h1>
+  <p>Track your orders in real time — from kitchen to counter</p>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="orders-page">
+  <div class="section-header">
+    <h2 class="section-title">Order History</h2>
+    <span id="refresh-status" style="font-size:0.78rem;color:var(--text-muted)">Refreshing every 15s</span>
   </div>
 
-  <div class="orders-container">
-    <h3>📋 My Order History</h3>
-    <div id="myOrders"></div>
+  <div id="orders-container">
+    <!-- skeletons while loading -->
+    <div class="skeleton skeleton-order"></div>
+    <div class="skeleton skeleton-order"></div>
   </div>
+</div>
 
-  <script>
-    const user = JSON.parse(localStorage.getItem('user'));
-    const token = localStorage.getItem('token');
-    if (!user || !token) window.location.href = 'index.html';
+<!-- ── TOAST CONTAINER ── -->
+<div id="toast-container"></div>
 
-    function logout() {
-      localStorage.clear();
-      window.location.href = 'index.html';
-    }
+<script>
+const API = 'https://smart-canteen-jt0d.onrender.com';
+const token = localStorage.getItem('token');
+const user  = JSON.parse(localStorage.getItem('user') || '{}');
 
-    async function loadMyOrders() {
-      const res = await fetch(`https://smart-canteen-jt0d.onrender.com/api/orders/myorders/${user._id}`);
-      const orders = await res.json();
+// ── Auth guard ──────────────────────────────────────────────────
+if (!token) { window.location.href = 'index.html'; }
 
-      if (!orders.length) {
-        document.getElementById('myOrders').innerHTML =
-          '<div class="no-orders">😕 No orders yet! Go order something delicious! <br><br><a href="menu.html" style="color:#2563eb; font-weight:700;">← Go to Menu</a></div>';
-        return;
-      }
+// ── Set user info ───────────────────────────────────────────────
+if (user.name) {
+  document.getElementById('user-name').textContent = user.name.split(' ')[0];
+  document.getElementById('user-avatar').textContent = user.name[0].toUpperCase();
+}
 
-      let html = '';
-      orders.forEach(order => {
-        const items = order.items.map(i => `${i.name} x${i.quantity}`).join(', ');
-        const time = new Date(order.createdAt).toLocaleString();
-        html += `
-          <div class="order-card">
-            <h4>Order #${order._id.slice(-6).toUpperCase()}</h4>
-            <p>🍴 <strong>Items:</strong> ${items}</p>
-            <p>💰 <strong>Total:</strong> ₹${order.totalPrice}</p>
-            <p>🕐 <strong>Ordered at:</strong> ${time}</p>
-            <span class="status-badge status-${order.status}">
-              ${order.status.toUpperCase()}
-            </span>
+function logout() {
+  localStorage.clear();
+  window.location.href = 'index.html';
+}
+
+// ── Toast ───────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+  document.getElementById('toast-container').appendChild(el);
+  setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3500);
+}
+
+// ── Status config ───────────────────────────────────────────────
+const STATUS_CONFIG = {
+  Pending:   { icon: '⏳', label: 'Order Placed',   banner: 'pending',   msg: 'Your order has been received. Hang tight!' },
+  Preparing: { icon: '👨‍🍳', label: 'Preparing',      banner: 'preparing', msg: 'The canteen team is cooking your order now.' },
+  Ready:     { icon: '🔔', label: 'Ready to Pick Up', banner: 'ready',    msg: 'Your order is ready! Head to the counter.' },
+  Completed: { icon: '✅', label: 'Completed',        banner: 'completed', msg: 'Order picked up. Enjoy your meal!' },
+  Cancelled: { icon: '❌', label: 'Cancelled',        banner: 'cancelled', msg: 'This order was cancelled.' }
+};
+
+// Ordered steps for the tracker (Cancelled shown separately)
+const TRACKER_STEPS = ['Pending', 'Preparing', 'Ready', 'Completed'];
+
+// ── Format helpers ──────────────────────────────────────────────
+function formatDate(d) {
+  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatTime(d) {
+  return new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function shortId(id) {
+  return '#' + id.slice(-6).toUpperCase();
+}
+
+// ── Get changedAt time for a step from statusHistory ────────────
+function getStepTime(order, status) {
+  if (!order.statusHistory) return null;
+  const entry = order.statusHistory.find(h => h.status === status);
+  return entry ? formatTime(entry.changedAt) : null;
+}
+
+// ── Build tracker HTML ──────────────────────────────────────────
+function buildTracker(order) {
+  const isCancelled = order.status === 'Cancelled';
+
+  if (isCancelled) {
+    return `<div class="tracker-wrap">
+      <div class="tracker">
+        ${TRACKER_STEPS.map((step, i) => {
+          const isDone = i === 0; // only Pending was done before cancel
+          const cls = isDone ? 'done' : '';
+          const cfg = STATUS_CONFIG[step];
+          const t = getStepTime(order, step);
+          return `<div class="tracker-step ${cls}">
+            <div class="tracker-dot">${isDone ? '✓' : cfg.icon}</div>
+            <div class="tracker-label">${cfg.label}</div>
+            ${t ? `<div class="tracker-time">${t}</div>` : ''}
           </div>`;
-      });
+        }).join('')}
+      </div>
+    </div>`;
+  }
 
-      document.getElementById('myOrders').innerHTML = html;
+  const currentIdx = TRACKER_STEPS.indexOf(order.status);
+
+  return `<div class="tracker-wrap">
+    <div class="tracker">
+      ${TRACKER_STEPS.map((step, i) => {
+        let cls = '';
+        if (i < currentIdx) cls = 'done';
+        else if (i === currentIdx) cls = 'active';
+        const cfg = STATUS_CONFIG[step];
+        const t = getStepTime(order, step);
+        return `<div class="tracker-step ${cls}">
+          <div class="tracker-dot">${cls === 'done' ? '✓' : cfg.icon}</div>
+          <div class="tracker-label">${cfg.label}</div>
+          ${t ? `<div class="tracker-time">${t}</div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+// ── Build single order card ─────────────────────────────────────
+function buildOrderCard(order) {
+  const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG['Pending'];
+
+  const itemsHtml = order.items.map(item => `
+    <div class="order-item-row">
+      <span class="order-item-name">${item.name}<span class="order-item-qty">× ${item.quantity}</span></span>
+      <span class="order-item-price">₹${item.price * item.quantity}</span>
+    </div>`).join('');
+
+  return `
+  <div class="order-card" id="order-${order._id}">
+    <div class="order-header">
+      <div class="order-header-left">
+        <span class="order-id-label">Order ${shortId(order._id)}</span>
+        <span class="order-date-label">${formatDate(order.createdAt)}</span>
+      </div>
+      <span class="status-badge status-${order.status.toLowerCase()}">${cfg.icon} ${order.status}</span>
+    </div>
+
+    ${buildTracker(order)}
+
+    <div class="status-banner ${cfg.banner}">
+      ${cfg.icon} ${cfg.msg}
+    </div>
+
+    <div class="order-items">
+      <div class="order-items-header">Items ordered</div>
+      ${itemsHtml}
+    </div>
+
+    <div class="order-footer">
+      <span class="order-pickup">
+        🕐 Pickup: ${order.pickupTime || 'ASAP'}
+      </span>
+      <div class="order-total-row">
+        <span class="order-total-label">Total</span>
+        <span class="order-total-amt">₹${order.total}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Fetch orders ────────────────────────────────────────────────
+let previousStatuses = {}; // track status changes to show toast
+
+async function fetchOrders() {
+  try {
+    const res = await fetch(`${API}/orders/my`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('Failed to fetch orders');
+    const orders = await res.json();
+
+    const container = document.getElementById('orders-container');
+
+    if (!orders.length) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <div class="empty-icon">🛒</div>
+          <h3>No orders yet</h3>
+          <p>Head to the menu and place your first order!</p>
+          <a href="menu.html" class="btn btn-primary">Browse Menu</a>
+        </div>`;
+      return;
     }
 
-    loadMyOrders();
-    setInterval(loadMyOrders, 15000);
-  </script>
+    // Check for status changes → toast notification
+    orders.forEach(order => {
+      const prev = previousStatuses[order._id];
+      if (prev && prev !== order.status) {
+        const cfg = STATUS_CONFIG[order.status];
+        const type = order.status === 'Ready' ? 'success' : order.status === 'Cancelled' ? 'error' : 'info';
+        toast(`Order ${shortId(order._id)}: ${cfg.msg}`, type);
+      }
+      previousStatuses[order._id] = order.status;
+    });
+
+    container.innerHTML = orders.map(buildOrderCard).join('');
+
+    // Update refresh timestamp
+    const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('refresh-status').textContent = `Last updated ${now} · auto-refreshes every 15s`;
+
+  } catch (err) {
+    console.error(err);
+    // Don't clear page on polling error, just show quiet warning
+    const rs = document.getElementById('refresh-status');
+    if (rs) rs.textContent = 'Connection issue — retrying...';
+  }
+}
+
+// ── Initial load + auto-poll every 15 seconds ───────────────────
+fetchOrders();
+setInterval(fetchOrders, 15000);
+</script>
 
 </body>
 </html>
