@@ -3,7 +3,7 @@
 
 const mongoose = require('mongoose');
 
-const MONGO_URI = 'mongodb+srv://canteenAdmin:hnQJIrrbmqBGErJC@cluster0.9jemkrh.mongodb.net/smartcanteen?appName=Cluster0';
+const MONGO_URI = 'mongodb://localhost:27017/smartcanteen';
 
 const MenuItemSchema = new mongoose.Schema({
   name:        { type: String, required: true },

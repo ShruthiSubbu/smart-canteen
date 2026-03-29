@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Profile — Smart Canteen</title>
+  <link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="logo-icon">🍛</div>
+    Smart Canteen
+  </div>
+  <ul class="navbar-nav">
+    <li><a href="menu.html">Menu</a></li>
+    <li><a href="orders.html">My Orders</a></li>
+    <li><a href="profile.html" class="active">Profile</a></li>
+  </ul>
+  <div class="navbar-right">
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar">S</div>
+      <span id="user-name">Student</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ── PAGE HERO ── -->
+<div class="page-hero">
+  <h1>My <span class="hero-accent">Profile</span></h1>
+  <p>Your account details and order history at a glance</p>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="page-content" style="max-width:800px;margin:0 auto">
+
+  <!-- PROFILE CARD -->
+  <div class="profile-card mb-3">
+    <div class="profile-header">
+      <div class="profile-avatar" id="profile-avatar">S</div>
+      <div>
+        <div class="profile-name" id="profile-name">Loading…</div>
+        <div class="profile-reg" id="profile-email">—</div>
+        <div style="margin-top:6px">
+          <span style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);border-radius:99px;padding:3px 12px;font-size:0.75rem;font-weight:600" id="profile-role">Student</span>
+        </div>
+      </div>
+    </div>
+    <div class="profile-body">
+      <div class="profile-stat-row" id="profile-stats">
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-total">—</div>
+          <div class="profile-stat-label">Total Orders</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-spent">—</div>
+          <div class="profile-stat-label">Total Spent</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-pending">—</div>
+          <div class="profile-stat-label">Active Orders</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-num" id="stat-fav">—</div>
+          <div class="profile-stat-label">Favourite Item</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT ORDERS -->
+  <div class="section-header">
+    <h2 class="section-title">Recent Orders</h2>
+    <a href="orders.html" class="btn btn-outline btn-sm">View All →</a>
+  </div>
+
+  <div id="recent-orders">
+    <div class="spinner"></div>
+  </div>
+
+</div>
+
+<!-- ── TOAST ── -->
+<div id="toast-container"></div>
+
+<script>
+  const API   = 'http://localhost:3000';
+  const token = localStorage.getItem('token');
+  const user  = JSON.parse(localStorage.getItem('user') || '{}');
+
+  if (!token || !user) window.location.href = 'index.html';
+
+  function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+  function toast(msg, type = 'info') {
+    const icons = { info: 'ℹ️', success: '✅', error: '❌' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3000);
+  }
+
+  // ── Set profile info from localStorage ──────────────────────
+  function loadProfileInfo() {
+    const name  = user.name  || 'Student';
+    const email = user.email || '—';
+    const role  = user.role  || 'student';
+
+    document.getElementById('profile-name').textContent  = name;
+    document.getElementById('profile-email').textContent = email;
+    document.getElementById('profile-role').textContent  = role === 'admin' ? '👨‍💼 Admin' : '🎓 Student';
+    document.getElementById('profile-avatar').textContent = name[0].toUpperCase();
+    document.getElementById('user-avatar').textContent    = name[0].toUpperCase();
+    document.getElementById('user-name').textContent      = name.split(' ')[0];
+  }
+
+  // ── Load orders & compute stats ──────────────────────────────
+  async function loadOrders() {
+    try {
+      const res    = await fetch(`${API}/api/orders/my`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const orders = await res.json();
+
+      // ── Stats ──
+      const total   = orders.length;
+      const spent   = orders.reduce((s, o) => s + (o.total || 0), 0);
+      const active  = orders.filter(o => ['Pending','Preparing','Ready'].includes(o.status)).length;
+
+      // Favourite item — most ordered across all orders
+      const itemCount = {};
+      orders.forEach(o => o.items.forEach(i => {
+        itemCount[i.name] = (itemCount[i.name] || 0) + i.quantity;
+      }));
+      const fav = Object.entries(itemCount).sort((a,b) => b[1]-a[1])[0];
+
+      document.getElementById('stat-total').textContent   = total;
+      document.getElementById('stat-spent').textContent   = '₹' + spent;
+      document.getElementById('stat-pending').textContent = active;
+      document.getElementById('stat-fav').textContent     = fav ? fav[0].split(' ')[0] : '—';
+
+      // ── Recent orders (last 5) ──
+      const recent    = orders.slice(0, 5);
+      const container = document.getElementById('recent-orders');
+
+      if (!recent.length) {
+        container.innerHTML = `
+          <div style="text-align:center;padding:3rem 2rem;color:var(--text-muted)">
+            <div style="font-size:2.5rem;margin-bottom:0.8rem">🛒</div>
+            <h3 style="font-family:var(--font-heading);color:var(--text);margin-bottom:0.4rem">No orders yet</h3>
+            <p style="font-size:0.88rem;margin-bottom:1.2rem">Head to the menu and place your first order!</p>
+            <a href="menu.html" class="btn btn-primary">Browse Menu</a>
+          </div>`;
+        return;
+      }
+
+      const STATUS_COLORS = {
+        Pending:   'status-pending',
+        Preparing: 'status-preparing',
+        Ready:     'status-ready',
+        Completed: 'status-completed',
+        Cancelled: 'status-cancelled'
+      };
+      const STATUS_ICONS = {
+        Pending:'⏳', Preparing:'👨‍🍳', Ready:'🔔', Completed:'✅', Cancelled:'❌'
+      };
+
+      container.innerHTML = recent.map(order => `
+        <div class="order-card" style="margin-bottom:1rem">
+          <div style="padding:0.9rem 1.2rem;background:var(--bg);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem">
+            <div>
+              <div style="font-size:0.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em">
+                Order #${order._id.slice(-6).toUpperCase()}
+              </div>
+              <div style="font-size:0.78rem;color:var(--text-light);margin-top:1px">
+                ${new Date(order.createdAt).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
+              </div>
+            </div>
+            <span class="status-badge ${STATUS_COLORS[order.status] || 'status-pending'}">
+              ${STATUS_ICONS[order.status] || '⏳'} ${order.status}
+            </span>
+          </div>
+          <div style="padding:0.9rem 1.2rem">
+            <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">
+              ${order.items.map(i => `${i.name} ×${i.quantity}`).join(' · ')}
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <span style="font-size:0.8rem;color:var(--text-muted)">🕐 ${order.pickupTime || 'ASAP'}</span>
+              <span style="font-family:var(--font-heading);font-size:1.05rem;font-weight:700;color:var(--saffron-dark)">₹${order.total}</span>
+            </div>
+          </div>
+        </div>`).join('');
+
+    } catch (err) {
+      document.getElementById('recent-orders').innerHTML =
+        '<p style="color:var(--text-muted);text-align:center;padding:2rem">Could not load orders. Is the server running?</p>';
+    }
+  }
+
+  // ── Init ─────────────────────────────────────────────────────
+  loadProfileInfo();
+  loadOrders();
+</script>
+
+</body>
+</html>

@@ -96,5 +96,14 @@ router.patch('/:id/status', authMiddleware, adminMiddleware, async (req, res) =>
     res.status(500).json({ message: err.message });
   }
 });
-
+  router.get('/my', authMiddleware, async (req, res) => {
+  try {
+    console.log('req.user:', req.user); // ADD THIS LINE
+    const orders = await Order.find({ userId: req.user.id.toString() }).sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    console.log('ERROR:', err.message); // ADD THIS LINE
+    res.status(500).json({ message: err.message });
+  }
+});
 module.exports = router;

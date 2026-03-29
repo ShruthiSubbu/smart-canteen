@@ -1,221 +1,364 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smart Canteen – Menu</title>
-  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/style.css" />
 </head>
-<body class="menu-page">
+<body>
 
-  <div class="navbar">
-    <h2>🍽️ Smart Canteen</h2>
-    <span id="welcomeMsg"></span>
-    <div style="display:flex; gap:10px;">
-      <button class="logout-btn" onclick="window.location.href='orders.html'">📋 My Orders</button>
-      <button class="logout-btn" onclick="logout()">Logout</button>
+<!-- ── NAVBAR ── -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <div class="logo-icon">🍛</div>
+    Smart Canteen
+  </div>
+  <ul class="navbar-nav">
+    <li><a href="menu.html" class="active">Menu</a></li>
+    <li><a href="orders.html">My Orders</a></li>
+  </ul>
+  <div class="navbar-right">
+    <span id="rush-badge" class="rush-badge">🔴 Rush Hour</span>
+    <div class="user-chip">
+      <div class="avatar" id="user-avatar">S</div>
+      <span id="user-name">Student</span>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- ── CANTEEN STATUS ── -->
+<div id="canteen-status" class="canteen-banner open-banner">
+  <div class="canteen-dot"></div>
+  <span id="canteen-status-text">Canteen is OPEN</span>
+</div>
+
+<!-- ── PAGE HERO ── -->
+<div class="page-hero">
+  <h1>Today's <span class="hero-accent">Menu</span></h1>
+  <p>Fresh, hot and ready — order now for quick pickup</p>
+</div>
+
+<!-- ── MENU TOOLBAR ── -->
+<div class="menu-toolbar">
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="searchInput" placeholder="Search menu…" oninput="filterMenu()" />
+  </div>
+  <div class="category-tabs">
+    <button class="cat-tab active" onclick="filterCategory('all', this)">All</button>
+    <button class="cat-tab" onclick="filterCategory('Breakfast', this)">🌅 Breakfast</button>
+    <button class="cat-tab" onclick="filterCategory('Lunch', this)">🍽 Lunch</button>
+    <button class="cat-tab" onclick="filterCategory('Snacks', this)">🥪 Snacks</button>
+    <button class="cat-tab" onclick="filterCategory('Beverages', this)">☕ Beverages</button>
+  </div>
+</div>
+
+<!-- ── MAIN CONTENT ── -->
+<div class="page-content">
+
+  <!-- Recommendations -->
+  <div id="rec-section" class="rec-strip mb-3">
+    <div class="rec-strip-header">🔥 Popular right now</div>
+    <div class="rec-items" id="recommendations"></div>
+  </div>
+
+  <!-- Menu Grid -->
+  <div class="section-header">
+    <h2 class="section-title" id="menu-section-title">All Items</h2>
+    <span style="font-size:0.82rem;color:var(--text-muted)" id="items-count"></span>
+  </div>
+  <div class="menu-grid" id="menuItems"></div>
+
+</div>
+
+<!-- ── CART SIDEBAR OVERLAY ── -->
+<div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
+
+<div class="cart-sidebar" id="cart-sidebar">
+  <div class="cart-header">
+    <h3>🛒 Your Cart</h3>
+    <button class="cart-close" onclick="closeCart()">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items">
+    <div class="cart-empty">
+      <div class="empty-icon">🛒</div>
+      <p>Your cart is empty</p>
     </div>
   </div>
-
-  <div id="rushBanner" class="rush-banner">
-    ⚠️ Rush Hour! Expect 15-20 min wait. Consider pre-ordering for later!
-  </div>
-
-  <div class="menu-container">
-
-    <!-- Pre-order Scheduling -->
-    <div class="preorder-bar">
-      <label>🕐 Schedule Pickup Time:</label>
-      <input type="time" id="pickupTimeInput" />
-      <span style="font-size:0.85rem; color:#64748b;">Leave empty for ASAP (15 min)</span>
+  <div class="cart-footer">
+    <div class="cart-subtotal">
+      <span id="cart-count-label">0 items</span>
     </div>
-
-    <!-- Recommendations -->
-    <div class="category-title">⭐ Recommended for You</div>
-    <div class="menu-grid" id="recommendations"></div>
-
-    <!-- Main Menu -->
-    <div id="menuItems"></div>
-
+    <div class="cart-total">
+      <span>Total</span>
+      <span id="cart-total">₹0</span>
+    </div>
+    <div class="pickup-select">
+      <label>Pickup Time</label>
+      <select id="pickupTimeInput">
+        <option value="">ASAP (~15 mins)</option>
+      </select>
+    </div>
+    <button class="btn btn-primary btn-full btn-lg" onclick="placeOrder()">Place Order →</button>
   </div>
+</div>
 
-  <div class="cart-bar">
-    <span id="cartInfo">🛒 Cart: 0 items | ₹0</span>
-    <button class="checkout-btn" onclick="placeOrder()">Place Order →</button>
-  </div>
+<!-- ── FLOATING CART BUTTON ── -->
+<button class="cart-btn" id="cart-fab" onclick="openCart()"
+  style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:150;box-shadow:var(--shadow-lg)">
+  🛒 Cart <span class="cart-count" id="cart-count">0</span>
+</button>
 
-  <script>
-    const userData = localStorage.getItem('user');
-if (!userData) window.location.href = 'index.html';
-const user = JSON.parse(userData);
-console.log('Loaded user:', user);
-    const token = localStorage.getItem('token');
-    if (!user || !token) window.location.href = 'index.html';
+<!-- ── TOAST ── -->
+<div id="toast-container"></div>
 
-    document.getElementById('welcomeMsg').textContent = `👋 Hi, ${user.name}!`;
+<script>
+  const API   = 'http://localhost:3000';
+  const token = localStorage.getItem('token');
+  const user  = JSON.parse(localStorage.getItem('user') || '{}');
 
-    let cart = [];
-    let allItems = [];
+  if (!token || !user) window.location.href = 'index.html';
 
-    const emojis = { breakfast: '🍳', lunch: '🍱', snacks: '🍿', beverages: '☕' };
-    const foodEmojis = {
-      'Masala Dosa': '🫓', 'Veg Fried Rice': '🍚', 'Samosa': '🥟',
-      'Chai': '☕', 'Paneer Butter Masala': '🍛', 'Idli Sambar': '🍽️',
-      'Poha': '🥣', 'Veg Biryani': '🍛', 'Dal Rice': '🍚',
-      'Vada': '🍩', 'Coffee': '☕', 'Lemon Juice': '🍋'
-    };
+  // Set user info
+  document.getElementById('user-name').textContent   = (user.name || 'Student').split(' ')[0];
+  document.getElementById('user-avatar').textContent = (user.name || 'S')[0].toUpperCase();
 
-    // Toast notification
-    function showToast(message, type = 'success') {
-      const existing = document.querySelector('.toast');
-      if (existing) existing.remove();
-      const toast = document.createElement('div');
-      toast.className = `toast toast-${type}`;
-      toast.textContent = message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+  function logout() { localStorage.clear(); window.location.href = 'index.html'; }
+
+  // ── Toast ────────────────────────────────────────────────────
+  function toast(msg, type = 'success') {
+    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
+    document.getElementById('toast-container').appendChild(el);
+    setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3000);
+  }
+
+  // ── Cart state ───────────────────────────────────────────────
+  let cart     = [];
+  let allItems = [];
+  let activeCategory = 'all';
+
+  const foodEmojis = {
+    'Masala Dosa':'🫓','Idli Sambar (2 pcs)':'🍽️','Poha':'🥣',
+    'Veg Meals':'🍱','Chicken Biryani':'🍛','Paneer Fried Rice':'🍚',
+    'Vada Pav':'🥙','Samosa (2 pcs)':'🥟','Pav Bhaji':'🍲',
+    'Masala Chai':'☕','Filter Coffee':'☕','Mango Lassi':'🥭'
+  };
+
+  // ── Pickup time slots ────────────────────────────────────────
+  function populatePickupTimes() {
+    const sel = document.getElementById('pickupTimeInput');
+    const now = new Date();
+    for (let i = 1; i <= 8; i++) {
+      const t = new Date(now.getTime() + i * 15 * 60000);
+      const label = t.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      sel.appendChild(opt);
     }
+  }
+  populatePickupTimes();
 
-    function logout() {
-      localStorage.clear();
-      window.location.href = 'index.html';
-    }
+  // ── Build menu card ──────────────────────────────────────────
+  function makeCard(item) {
+    const emoji     = foodEmojis[item.name] || '🍽️';
+    const cat       = (item.category || '').toLowerCase();
+    const stock     = item.stock ?? item.stockCount ?? 0;
+    const available = (item.available ?? item.isAvailable ?? true) && stock > 0;
+    const lowStock  = stock > 0 && stock <= 10;
 
-    function getPickupTime() {
-      const input = document.getElementById('pickupTimeInput').value;
-      if (input) return input;
-      const now = new Date();
-      now.setMinutes(now.getMinutes() + 15);
-      return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
+    return `
+      <div class="menu-card ${!available ? 'out-of-stock' : ''}">
+        <div class="menu-card-img">
+          ${emoji}
+          <span class="category-badge ${cat}">${item.category}</span>
+          ${!available ? '<div class="out-of-stock-overlay">Out of Stock</div>' : ''}
+        </div>
+        <div class="menu-card-body">
+          <div class="menu-card-name">${item.name}</div>
+          <div class="menu-card-desc">${item.description || 'A delicious canteen favourite'}</div>
+          <div class="menu-card-footer">
+            <div class="menu-price"><span>₹</span>${item.price}</div>
+            <button class="add-btn" onclick='addToCart(${JSON.stringify(item)})' ${!available ? 'disabled' : ''}>
+              ${available ? '+ Add' : 'Sold Out'}
+            </button>
+          </div>
+          <div class="stock-indicator ${lowStock ? 'low' : ''}">
+            ${lowStock ? `Only ${stock} left!` : available ? `${stock} in stock` : ''}
+          </div>
+        </div>
+      </div>`;
+  }
 
-    function makeCard(item) {
-      const emoji = foodEmojis[item.name] || '🍽️';
-      if (!item.isAvailable || item.stockCount <= 0) {
-        return `
-          <div class="menu-card out-of-stock">
-            <span class="food-emoji">${emoji}</span>
-            <h4>${item.name}</h4>
-            <div class="price">₹${item.price}</div>
-            <div class="stock">📦 Stock: 0</div>
-            <div class="out-of-stock-badge">❌ Out of Stock</div>
-          </div>`;
-      }
-      return `
-        <div class="menu-card">
-          <span class="food-emoji">${emoji}</span>
-          <h4>${item.name}</h4>
-          <div class="price">₹${item.price}</div>
-          <div class="stock">📦 Stock: ${item.stockCount}</div>
-          <button class="add-btn" onclick='addToCart(${JSON.stringify(item)})'>+ Add to Cart</button>
+  // ── Load menu ────────────────────────────────────────────────
+  async function loadMenu() {
+    try {
+      const res = await fetch(`${API}/api/menu`);
+      allItems  = await res.json();
+
+      // Recommendations
+      const top3 = [...allItems].sort((a,b) => b.orderCount - a.orderCount).slice(0,3);
+      document.getElementById('recommendations').innerHTML = top3.map(item => {
+        const stock = item.stock ?? item.stockCount ?? 0;
+        return `<div class="rec-pill" onclick='addToCart(${JSON.stringify(item)})'>
+          ${foodEmojis[item.name] || '🍽️'} ${item.name}
+          <span class="rec-price">₹${item.price}</span>
         </div>`;
+      }).join('');
+
+      renderMenu();
+    } catch (err) {
+      toast('Failed to load menu. Is server running?', 'error');
     }
-    
-    async function loadMenu() {
-      try {
-        const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/menu');
-        allItems = await res.json();
+  }
 
-        // Recommendations — top 3 by orderCount
-        const recommended = [...allItems]
-          .sort((a, b) => b.orderCount - a.orderCount)
-          .slice(0, 3);
-        document.getElementById('recommendations').innerHTML =
-          recommended.map(makeCard).join('');
+  // ── Render filtered menu ─────────────────────────────────────
+  function renderMenu() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    let filtered = allItems;
 
-        // Full menu by category
-        const categories = ['breakfast', 'lunch', 'snacks', 'beverages'];
-        let html = '';
-        categories.forEach(cat => {
-          const catItems = allItems.filter(i => i.category === cat);
-          if (!catItems.length) return;
-          html += `<div class="category-title">${emojis[cat]} ${cat.charAt(0).toUpperCase() + cat.slice(1)}</div>`;
-          html += `<div class="menu-grid">${catItems.map(makeCard).join('')}</div>`;
-        });
-        document.getElementById('menuItems').innerHTML = html;
-      } catch (err) {
-        showToast('❌ Failed to load menu. Is server running?', 'error');
-      }
+    if (activeCategory !== 'all') {
+      filtered = filtered.filter(i => i.category === activeCategory);
+    }
+    if (search) {
+      filtered = filtered.filter(i => i.name.toLowerCase().includes(search));
     }
 
-    function addToCart(item) {
-      const existing = cart.find(c => c.menuItemId === item._id);
-      if (existing) {
-        existing.quantity += 1;
+    const container = document.getElementById('menuItems');
+    document.getElementById('items-count').textContent = `${filtered.length} items`;
+
+    if (!filtered.length) {
+      container.innerHTML = `
+        <div class="no-results">
+          <div class="no-icon">🔍</div>
+          <h3>No items found</h3>
+          <p>Try a different search or category</p>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = filtered.map(makeCard).join('');
+  }
+
+  function filterCategory(cat, btn) {
+    activeCategory = cat;
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    btn.classList.add('active');
+    const titles = { all:'All Items', Breakfast:'Breakfast', Lunch:'Lunch', Snacks:'Snacks', Beverages:'Beverages' };
+    document.getElementById('menu-section-title').textContent = titles[cat] || cat;
+    renderMenu();
+  }
+
+  function filterMenu() { renderMenu(); }
+
+  // ── Cart functions ───────────────────────────────────────────
+  function addToCart(item) {
+    const existing = cart.find(c => c.menuItemId === item._id);
+    if (existing) existing.quantity++;
+    else cart.push({ menuItemId: item._id, name: item.name, price: item.price, quantity: 1 });
+    updateCart();
+    toast(`${item.name} added to cart!`);
+  }
+
+  function changeQty(id, delta) {
+    const item = cart.find(c => c.menuItemId === id);
+    if (!item) return;
+    item.quantity += delta;
+    if (item.quantity <= 0) cart = cart.filter(c => c.menuItemId !== id);
+    updateCart();
+    renderCartSidebar();
+  }
+
+  function updateCart() {
+    const count = cart.reduce((s,i) => s + i.quantity, 0);
+    const total = cart.reduce((s,i) => s + i.price * i.quantity, 0);
+    document.getElementById('cart-count').textContent       = count;
+    document.getElementById('cart-count-label').textContent = `${count} item${count!==1?'s':''}`;
+    document.getElementById('cart-total').textContent       = `₹${total}`;
+    renderCartSidebar();
+  }
+
+  function renderCartSidebar() {
+    const container = document.getElementById('cart-items');
+    if (!cart.length) {
+      container.innerHTML = `<div class="cart-empty"><div class="empty-icon">🛒</div><p>Your cart is empty</p></div>`;
+      return;
+    }
+    container.innerHTML = cart.map(item => `
+      <div class="cart-item">
+        <div class="cart-item-icon">${foodEmojis[item.name]||'🍽️'}</div>
+        <div class="cart-item-info">
+          <div class="cart-item-name">${item.name}</div>
+          <div class="cart-item-price">₹${item.price * item.quantity}</div>
+        </div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty('${item.menuItemId}', -1)">−</button>
+          <span class="qty-num">${item.quantity}</span>
+          <button class="qty-btn" onclick="changeQty('${item.menuItemId}', 1)">+</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function openCart()  {
+    document.getElementById('cart-sidebar').classList.add('open');
+    document.getElementById('cart-overlay').classList.add('open');
+  }
+  function closeCart() {
+    document.getElementById('cart-sidebar').classList.remove('open');
+    document.getElementById('cart-overlay').classList.remove('open');
+  }
+
+  // ── Place order ──────────────────────────────────────────────
+  async function placeOrder() {
+    if (!cart.length) { toast('Your cart is empty!', 'error'); return; }
+
+    const pickupTime = document.getElementById('pickupTimeInput').value || 'ASAP';
+    toast('Placing your order…', 'info');
+
+    try {
+      const res  = await fetch(`${API}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ items: cart, pickupTime })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        toast(`Order placed! Pickup at ${pickupTime} ✅`, 'success');
+        cart = [];
+        updateCart();
+        closeCart();
+        loadMenu();
       } else {
-        cart.push({ menuItemId: item._id, name: item.name, price: item.price, quantity: 1 });
+        toast('❌ ' + data.message, 'error');
       }
-      updateCartBar();
-      showToast(`✅ ${item.name} added to cart!`, 'success');
+    } catch (err) {
+      toast('Server error! Please try again.', 'error');
     }
+  }
 
-    function updateCartBar() {
-      const total = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-      const count = cart.reduce((sum, i) => sum + i.quantity, 0);
-      document.getElementById('cartInfo').textContent =
-        `🛒 ${count} item${count !== 1 ? 's' : ''} | ₹${total}`;
-    }
+  // ── Rush hour check ──────────────────────────────────────────
+  async function checkRush() {
+    try {
+      const res  = await fetch(`${API}/api/orders/rush-status`);
+      const data = await res.json();
+      const badge = document.getElementById('rush-badge');
+      if (data.isRush) badge.classList.add('visible');
+      else badge.classList.remove('visible');
+    } catch (_) {}
+  }
 
-    async function placeOrder() {
-      console.log('User object:', user);
-      if (cart.length === 0) {
-        showToast('🛒 Your cart is empty!', 'error');
-        return;
-      }
-
-      const pickupTime = getPickupTime();
-      const userId = user._id || user.id;
-
-      console.log('Sending userId:', userId);
-
-      showToast('⏳ Placing your order...', 'info');
-
-      try {
-        const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/place', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            userId: userId,
-            items: cart,
-            pickupTime: pickupTime
-          })
-        });
-
-        const data = await res.json();
-        if (res.ok) {
-          showToast(`✅ Order placed! Pickup at ${pickupTime}`, 'success');
-          setTimeout(() => {
-            alert(`✅ Order Confirmed!\n🍴 Total: ₹${data.order.totalPrice}\n🕐 Pickup Time: ${pickupTime}\n📋 Status: Pending`);
-          }, 500);
-          cart = [];
-          updateCartBar();
-          loadMenu();
-        } else {
-          showToast('❌ ' + data.message, 'error');
-        }
-      } catch (err) {
-        showToast('❌ Server error! Please try again.', 'error');
-      }
-    }
-
-    async function checkRush() {
-      try {
-        const res = await fetch('https://smart-canteen-jt0d.onrender.com/api/orders/rush-status');
-        const data = await res.json();
-        document.getElementById('rushBanner').style.display =
-          data.isRush ? 'block' : 'none';
-      } catch (err) {
-        console.log('Rush check failed');
-      }
-    }
-
-    loadMenu();
-    checkRush();
-    setInterval(loadMenu, 30000);
-    setInterval(checkRush, 30000);
-  </script>
+  // ── Init ─────────────────────────────────────────────────────
+  loadMenu();
+  checkRush();
+  setInterval(loadMenu, 30000);
+  setInterval(checkRush, 30000);
+</script>
 
 </body>
 </html>

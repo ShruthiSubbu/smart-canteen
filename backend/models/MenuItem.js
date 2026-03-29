@@ -7,18 +7,30 @@ const menuItemSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['breakfast', 'lunch', 'snacks', 'beverages'],
+    enum: ['Breakfast', 'Lunch', 'Snacks', 'Beverages'],
     required: true
   },
   price: {
     type: Number,
     required: true
   },
+  description: {
+    type: String,
+    default: ''
+  },
+  stock: {
+    type: Number,
+    default: 50
+  },
   stockCount: {
     type: Number,
     default: 50
   },
   isAvailable: {
+    type: Boolean,
+    default: true
+  },
+  available: {
     type: Boolean,
     default: true
   },
