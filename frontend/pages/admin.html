@@ -72,16 +72,15 @@
 
 <!-- ── TAB NAV ── -->
 <div class="admin-tabs">
-  <button class="admin-tab active" onclick="showTab('orders', this)">📋 Orders</button>
-  <button class="admin-tab" onclick="showTab('demand', this)">📈 Demand</button>
-  <button class="admin-tab" onclick="showTab('addmenu', this)">➕ Add Item</button>
-  <button class="admin-tab" onclick="showTab('menuitems', this)">✏️ Menu Items</button>
-  <button class="admin-tab" onclick="showTab('restock', this)">📦 Restock</button>
+  <button class="admin-tab active" onclick="showTab('orders',this)">📋 Orders</button>
+  <button class="admin-tab" onclick="showTab('demand',this)">📈 Demand</button>
+  <button class="admin-tab" onclick="showTab('addmenu',this)">➕ Add Item</button>
+  <button class="admin-tab" onclick="showTab('menuitems',this)">✏️ Menu Items</button>
+  <button class="admin-tab" onclick="showTab('restock',this)">📦 Restock</button>
+  <button class="admin-tab" onclick="showTab('timing',this)">🕐 Timing</button>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     ORDERS TAB
-══════════════════════════════════════════════════ -->
+<!-- ══ ORDERS TAB ══════════════════════════════════════════════ -->
 <div id="tab-orders" class="page-content">
   <div class="section-header">
     <h2 class="section-title">Incoming Orders</h2>
@@ -93,18 +92,14 @@
   <div id="admin-orders-container"><div class="spinner"></div></div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     DEMAND TAB
-══════════════════════════════════════════════════ -->
+<!-- ══ DEMAND TAB ══════════════════════════════════════════════ -->
 <div id="tab-demand" class="page-content" style="display:none">
   <div class="section-header"><h2 class="section-title">Demand Prediction</h2></div>
   <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:1.5rem;margin-top:-0.5rem">Based on order frequency — items ranked by how often they've been ordered.</p>
   <div id="demandList"></div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     ADD ITEM TAB
-══════════════════════════════════════════════════ -->
+<!-- ══ ADD ITEM TAB ════════════════════════════════════════════ -->
 <div id="tab-addmenu" class="page-content" style="display:none">
   <div class="section-header"><h2 class="section-title">Add New Menu Item</h2></div>
   <div class="add-item-form">
@@ -129,9 +124,7 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     MENU ITEMS TAB — EDIT & DELETE
-══════════════════════════════════════════════════ -->
+<!-- ══ MENU ITEMS TAB ══════════════════════════════════════════ -->
 <div id="tab-menuitems" class="page-content" style="display:none">
   <div class="section-header">
     <h2 class="section-title">Menu Items</h2>
@@ -178,15 +171,74 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     RESTOCK TAB
-══════════════════════════════════════════════════ -->
+<!-- ══ RESTOCK TAB ═════════════════════════════════════════════ -->
 <div id="tab-restock" class="page-content" style="display:none">
   <div class="section-header">
     <h2 class="section-title">Restock Items</h2>
     <button class="btn btn-outline btn-sm" onclick="loadRestockList()">↻ Refresh</button>
   </div>
   <div id="restockList"><div class="spinner"></div></div>
+</div>
+
+<!-- ══ TIMING TAB ══════════════════════════════════════════════ -->
+<div id="tab-timing" class="page-content" style="display:none">
+  <div class="section-header">
+    <h2 class="section-title">🕐 Canteen Timing</h2>
+  </div>
+
+  <!-- Live status preview -->
+  <div id="timing-live-status" style="
+    display:flex;align-items:center;gap:10px;
+    padding:14px 18px;border-radius:var(--radius);font-size:0.92rem;font-weight:600;
+    margin-bottom:1.8rem;
+    background:var(--teal-pale);color:var(--teal-dark);
+    border:1.5px solid rgba(13,115,119,0.2);">
+    <span id="timing-status-dot" style="width:11px;height:11px;border-radius:50%;background:var(--teal);flex-shrink:0"></span>
+    <span id="timing-status-text">Loading…</span>
+  </div>
+
+  <!-- Manual Override -->
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.4rem 1.5rem;margin-bottom:1.5rem">
+    <div style="font-family:var(--font-heading);font-size:1rem;font-weight:700;margin-bottom:0.3rem">⚡ Manual Override</div>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem">Force the canteen open or closed regardless of the schedule below.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn btn-sm" id="btn-override-open"
+        style="background:var(--green-pale);color:var(--green);border:1.5px solid var(--green);font-weight:700"
+        onclick="setOverride('open')">🟢 Force OPEN</button>
+      <button class="btn btn-sm" id="btn-override-closed"
+        style="background:#FEE2E2;color:var(--red);border:1.5px solid var(--red);font-weight:700"
+        onclick="setOverride('closed')">🔴 Force CLOSED</button>
+      <button class="btn btn-outline btn-sm" onclick="setOverride(null)">↺ Use Schedule</button>
+    </div>
+    <div id="override-msg" style="margin-top:10px;font-size:0.82rem;font-weight:600"></div>
+  </div>
+
+  <!-- Schedule Settings -->
+  <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.4rem 1.5rem;margin-bottom:1.5rem">
+    <div style="font-family:var(--font-heading);font-size:1rem;font-weight:700;margin-bottom:1rem">📅 Weekly Schedule</div>
+    <div class="form-row" style="margin-bottom:1rem">
+      <div class="form-group">
+        <label>Opening Time</label>
+        <input type="time" id="timing-open" value="08:00"
+          style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:0.9rem;outline:none;background:var(--bg);width:100%"
+          onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'" />
+      </div>
+      <div class="form-group">
+        <label>Closing Time</label>
+        <input type="time" id="timing-close" value="21:00"
+          style="padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-body);font-size:0.9rem;outline:none;background:var(--bg);width:100%"
+          onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'" />
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:1.2rem">
+      <label>Closed Days</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" id="closed-days-picker">
+        <!-- rendered by JS -->
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="saveTimingSchedule()">💾 Save Schedule</button>
+    <div id="timing-save-msg" style="margin-top:10px;font-size:0.85rem;font-weight:600"></div>
+  </div>
 </div>
 
 <!-- ── TOAST ── -->
@@ -215,7 +267,7 @@
   }
 
   function showTab(tab, btn) {
-    ['orders','demand','addmenu','menuitems','restock'].forEach(t => {
+    ['orders','demand','addmenu','menuitems','restock','timing'].forEach(t => {
       document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
     });
     document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
@@ -223,6 +275,7 @@
     if (tab === 'restock')   loadRestockList();
     if (tab === 'demand')    loadDemandPrediction();
     if (tab === 'menuitems') loadMenuItems();
+    if (tab === 'timing')    loadTimingTab();
   }
 
   const STATUS_OPTIONS = ['Pending','Preparing','Ready','Completed','Cancelled'];
@@ -237,12 +290,14 @@
 
   async function loadOrders() {
     try {
-      let res = await fetch(`${API}/api/orders`, { headers:{ Authorization:`Bearer ${token}` }});
-      if (!res.ok) res = await fetch(`${API}/api/orders/all`);
+      const res    = await fetch(`${API}/api/orders`, { headers:{ Authorization:`Bearer ${token}` }});
       const orders = await res.json();
       loadStats(orders);
       const container = document.getElementById('admin-orders-container');
-      if (!orders.length) { container.innerHTML=`<div style="text-align:center;padding:4rem 2rem;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:1rem">🎉</div><h3 style="font-family:var(--font-heading);color:var(--text)">No orders yet</h3></div>`; return; }
+      if (!orders.length) {
+        container.innerHTML=`<div style="text-align:center;padding:4rem 2rem;color:var(--text-muted)"><div style="font-size:2.5rem;margin-bottom:1rem">🎉</div><h3 style="font-family:var(--font-heading);color:var(--text)">No orders yet</h3></div>`;
+        return;
+      }
       container.innerHTML = `<div class="table-wrapper"><table>
         <thead><tr><th>Order ID</th><th>Items</th><th>Total</th><th>Pickup</th><th>Time</th><th>Status</th><th>Update</th></tr></thead>
         <tbody>${orders.map(order => {
@@ -270,8 +325,7 @@
   async function updateStatus(orderId, newStatus, selectEl) {
     selectEl.disabled = true;
     try {
-      let res = await fetch(`${API}/api/orders/${orderId}/status`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status:newStatus})});
-      if (!res.ok) res = await fetch(`${API}/api/orders/status/${orderId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:newStatus.toLowerCase()})});
+      const res = await fetch(`${API}/api/orders/${orderId}/status`,{method:'PATCH',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({status:newStatus})});
       if (!res.ok) throw new Error();
       const badge = document.getElementById(`badge-${orderId}`);
       if (badge) { badge.className=`status-badge ${STATUS_COLORS[newStatus]||'status-pending'}`; badge.innerHTML=`${STATUS_ICONS[newStatus]||''} ${newStatus}`; }
@@ -295,17 +349,14 @@
     } catch { msg.style.color='var(--red)'; msg.textContent='❌ Server error.'; }
   }
 
-  // ══ MENU ITEMS — EDIT & DELETE ════════════════════════════════
   async function loadMenuItems() {
     document.getElementById('menuItemsList').innerHTML = '<div class="spinner"></div>';
     try {
-      const res=await fetch(`${API}/api/menu`);
-      const items=await res.json();
+      const res=await fetch(`${API}/api/menu`); const items=await res.json();
       if (!items.length) { document.getElementById('menuItemsList').innerHTML='<p class="text-muted">No menu items found.</p>'; return; }
       document.getElementById('menuItemsList').innerHTML = items.map(item => {
         const stock=item.stock??item.stockCount??0;
         const available=item.available??item.isAvailable??stock>0;
-        const cat=(item.category||'').toLowerCase();
         const safeItem = JSON.stringify(item).replace(/"/g,'&quot;');
         return `<div id="item-card-${item._id}" style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1rem 1.2rem;margin-bottom:0.9rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;transition:all 0.2s">
           <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:200px">
@@ -340,7 +391,6 @@
     document.getElementById('editMsg').textContent = '';
     document.getElementById('editModal').classList.add('open');
   }
-
   function closeEditModal() { document.getElementById('editModal').classList.remove('open'); }
 
   async function saveEdit() {
@@ -369,7 +419,6 @@
     } catch { toast('Server error.','error'); }
   }
 
-  // ══ DEMAND ════════════════════════════════════════════════════
   async function loadDemandPrediction() {
     document.getElementById('demandList').innerHTML='<div class="spinner"></div>';
     try {
@@ -397,7 +446,6 @@
     } catch { document.getElementById('demandList').innerHTML='<p class="text-muted">Failed to load.</p>'; }
   }
 
-  // ══ RESTOCK ═══════════════════════════════════════════════════
   async function loadRestockList() {
     document.getElementById('restockList').innerHTML='<div class="spinner"></div>';
     try {
@@ -422,7 +470,7 @@
     } catch { document.getElementById('restockList').innerHTML='<p class="text-muted">Failed to load.</p>'; }
   }
 
-  async function restockItem(itemId,itemName) {
+  async function restockItem(itemId, itemName) {
     const stockVal=document.getElementById(`stock-${itemId}`).value;
     try {
       const res=await fetch(`${API}/api/admin/menu/restock/${itemId}`,{method:'PUT',headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},body:JSON.stringify({stockCount:Number(stockVal)})});
@@ -431,7 +479,108 @@
     } catch { toast('Server error.','error'); }
   }
 
-  // ══ RUSH ══════════════════════════════════════════════════════
+  // ══ TIMING TAB ════════════════════════════════════════════════
+  const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  let currentClosedDays = [0]; // default: Sunday closed
+
+  function renderDayPicker(closedDays) {
+    currentClosedDays = closedDays || [0];
+    document.getElementById('closed-days-picker').innerHTML = DAY_NAMES.map((d, i) => {
+      const isClosed = currentClosedDays.includes(i);
+      return `<button onclick="toggleDay(${i})" id="day-btn-${i}"
+        style="padding:7px 14px;border-radius:99px;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.15s;
+          border:1.5px solid ${isClosed ? 'var(--red)' : 'var(--border)'};
+          background:${isClosed ? '#FEE2E2' : 'var(--surface)'};
+          color:${isClosed ? 'var(--red)' : 'var(--text-muted)'}">${d}</button>`;
+    }).join('');
+  }
+
+  function toggleDay(dayIndex) {
+    if (currentClosedDays.includes(dayIndex)) {
+      currentClosedDays = currentClosedDays.filter(d => d !== dayIndex);
+    } else {
+      currentClosedDays = [...currentClosedDays, dayIndex];
+    }
+    renderDayPicker(currentClosedDays);
+  }
+
+  async function loadTimingTab() {
+    try {
+      const res  = await fetch(`${API}/api/admin/canteen-status`);
+      const data = await res.json();
+
+      // Fill form
+      document.getElementById('timing-open').value  = data.openTime  || '08:00';
+      document.getElementById('timing-close').value = data.closeTime || '21:00';
+      renderDayPicker(data.closedDays || [0]);
+
+      // Update live status preview
+      const statusEl  = document.getElementById('timing-status-text');
+      const dotEl     = document.getElementById('timing-status-dot');
+      const liveBox   = document.getElementById('timing-live-status');
+      statusEl.textContent = data.message;
+      if (data.isOpen) {
+        liveBox.style.background = 'var(--teal-pale)';
+        liveBox.style.color      = 'var(--teal-dark)';
+        liveBox.style.border     = '1.5px solid rgba(13,115,119,0.2)';
+        dotEl.style.background   = 'var(--teal)';
+      } else {
+        liveBox.style.background = '#FEE2E2';
+        liveBox.style.color      = 'var(--red)';
+        liveBox.style.border     = '1.5px solid rgba(229,62,62,0.2)';
+        dotEl.style.background   = 'var(--red)';
+      }
+
+      // Highlight active override button
+      document.getElementById('btn-override-open').style.opacity   = data.manualOverride === 'open'   ? '1' : '0.5';
+      document.getElementById('btn-override-closed').style.opacity = data.manualOverride === 'closed' ? '1' : '0.5';
+
+    } catch { document.getElementById('timing-status-text').textContent = 'Could not load status'; }
+  }
+
+  async function setOverride(value) {
+    try {
+      const res = await fetch(`${API}/api/admin/canteen-timing`, {
+        method: 'PUT',
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ manualOverride: value })
+      });
+      if (res.ok) {
+        const label = value === 'open' ? '🟢 Forced OPEN' : value === 'closed' ? '🔴 Forced CLOSED' : '↺ Using schedule';
+        document.getElementById('override-msg').style.color = 'var(--green)';
+        document.getElementById('override-msg').textContent = `✅ ${label}`;
+        toast(label, 'success');
+        loadTimingTab();
+      }
+    } catch { toast('Failed to set override', 'error'); }
+  }
+
+  async function saveTimingSchedule() {
+    const openTime  = document.getElementById('timing-open').value;
+    const closeTime = document.getElementById('timing-close').value;
+    const msg       = document.getElementById('timing-save-msg');
+
+    if (!openTime || !closeTime) { msg.style.color='var(--red)'; msg.textContent='❌ Please set both open and close times.'; return; }
+    if (openTime >= closeTime)   { msg.style.color='var(--red)'; msg.textContent='❌ Opening time must be before closing time.'; return; }
+
+    try {
+      const res = await fetch(`${API}/api/admin/canteen-timing`, {
+        method: 'PUT',
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ openTime, closeTime, closedDays: currentClosedDays })
+      });
+      if (res.ok) {
+        msg.style.color = 'var(--green)';
+        msg.textContent = '✅ Schedule saved!';
+        toast('Canteen schedule updated!', 'success');
+        setTimeout(() => { msg.textContent = ''; }, 3000);
+        loadTimingTab();
+      } else {
+        msg.style.color = 'var(--red)'; msg.textContent = '❌ Failed to save.';
+      }
+    } catch { msg.style.color='var(--red)'; msg.textContent='❌ Server error.'; }
+  }
+
   async function checkRush() {
     try {
       const res=await fetch(`${API}/api/orders/rush-status`); const data=await res.json();
@@ -440,9 +589,10 @@
     } catch { document.getElementById('rushStatus').textContent='—'; }
   }
 
-  // ══ INIT ══════════════════════════════════════════════════════
+  // ── Init ─────────────────────────────────────────────────────
   loadOrders(); checkRush();
-  setInterval(loadOrders,10000); setInterval(checkRush,15000);
+  setInterval(loadOrders, 10000);
+  setInterval(checkRush, 15000);
 </script>
 
 </body>

@@ -1,118 +1,69 @@
-// backend/routes/orders.js
 const express = require('express');
 const router = express.Router();
-const Order = require('../models/Order');
-const MenuItem = require('../models/MenuItem');
-const { authMiddleware, adminMiddleware } = require('../middleware/auth');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
-// ── POST /api/orders — place a new order ────────────────────────
-router.post('/', authMiddleware, async (req, res) => {
+// ── POST /api/auth/register ──────────────────────────────────────
+router.post('/register', async (req, res) => {
   try {
-    const { items, pickupTime } = req.body;
-    if (!items || !items.length) return res.status(400).json({ message: 'No items in order' });
+    const { name, email, password, role } = req.body;
 
-    let total = 0;
-    const orderItems = [];
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ message: 'Email already registered' });
 
-    for (const item of items) {
-      const menuItem = await MenuItem.findById(item.menuItemId);
-      if (!menuItem) return res.status(404).json({ message: `Item ${item.menuItemId} not found` });
+    const hashed = await bcrypt.hash(password, 10);
+    const user = new User({ name, email, password: hashed, role: role || 'student' });
+    await user.save();
 
-      const stock = menuItem.stock ?? menuItem.stockCount ?? 0;
-      if (stock < item.quantity) return res.status(400).json({ message: `${menuItem.name} is out of stock` });
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
 
-      menuItem.stock      = stock - item.quantity;
-      menuItem.stockCount = stock - item.quantity;
-      menuItem.orderCount += item.quantity;
-      await menuItem.save();
-
-      total += menuItem.price * item.quantity;
-      orderItems.push({
-        menuItemId: item.menuItemId,
-        name: menuItem.name,
-        price: menuItem.price,
-        quantity: item.quantity
-      });
-    }
-
-    const order = new Order({
-      userId: req.user.userId.toString(),
-      items: orderItems,
-      total,
-      pickupTime,
-      status: 'Pending',
-      statusHistory: [{ status: 'Pending', changedAt: new Date() }]
-    });
-
-    await order.save();
-    res.status(201).json(order);
+    res.status(201).json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ── GET /api/orders/my — student's own orders ───────────────────
-router.get('/my', authMiddleware, async (req, res) => {
+// ── POST /api/auth/login ─────────────────────────────────────────
+router.post('/login', async (req, res) => {
   try {
-    const orders = await Order.find({ userId: req.user.userId.toString() }).sort({ createdAt: -1 });
-    res.json(orders);
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(401).json({ message: 'Invalid email or password' });
+
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(401).json({ message: 'Invalid email or password' });
+
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({ token, user: { id: user._id, name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
 
-// ── GET /api/orders/rush-status ──────────────────────────────────
-router.get('/rush-status', async (req, res) => {
+// ── GET /api/auth/me ─────────────────────────────────────────────
+router.get('/me', async (req, res) => {
   try {
-    const fifteenMinsAgo = new Date(Date.now() - 15 * 60 * 1000);
-    const recentCount = await Order.countDocuments({ createdAt: { $gte: fifteenMinsAgo } });
-    res.json({ isRush: recentCount >= 10, count: recentCount });
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) return res.status(401).json({ message: 'No token' });
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.json(user);
   } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ── GET /api/orders — admin: all orders ─────────────────────────
-router.get('/', authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const orders = await Order.find().sort({ createdAt: -1 }).limit(100);
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ── GET /api/orders/:id — single order ──────────────────────────
-router.get('/:id', authMiddleware, async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-    if (order.userId !== req.user.userId.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-    res.json(order);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-});
-
-// ── PATCH /api/orders/:id/status — admin updates status ─────────
-router.patch('/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
-  try {
-    const { status } = req.body;
-    const validStatuses = ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
-    if (!validStatuses.includes(status)) return res.status(400).json({ message: 'Invalid status' });
-
-    const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: 'Order not found' });
-
-    order.status = status;
-    order.statusHistory.push({ status, changedAt: new Date() });
-    await order.save();
-
-    res.json(order);
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(401).json({ message: 'Invalid token' });
   }
 });
 

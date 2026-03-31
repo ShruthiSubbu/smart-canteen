@@ -11,7 +11,7 @@
 <!-- ── NAVBAR ── -->
 <nav class="navbar">
   <div class="navbar-brand">
-    <div class="logo-icon">🍛</div>
+    <div class="logo-icon">🛖</div>
     Smart Canteen
   </div>
   <ul class="navbar-nav">
@@ -28,16 +28,26 @@
   </div>
 </nav>
 
-<!-- ── CANTEEN STATUS ── -->
-<div id="canteen-status" class="canteen-banner open-banner">
-  <div class="canteen-dot"></div>
-  <span id="canteen-status-text">Canteen is OPEN</span>
+<!-- ── CANTEEN STATUS BANNER ── -->
+<div id="canteen-banner" style="
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  padding:10px 1.5rem;font-size:0.88rem;font-weight:600;
+  transition:background 0.4s;
+  background:var(--teal-pale);color:var(--teal-dark);
+  border-bottom:1.5px solid rgba(13,115,119,0.15);">
+  <span id="canteen-dot" style="width:10px;height:10px;border-radius:50%;background:var(--teal);display:inline-block;flex-shrink:0;animation:blink 2s infinite"></span>
+  <span id="canteen-status-text">Checking canteen status…</span>
+  <span id="canteen-hours" style="font-weight:400;opacity:0.7;font-size:0.8rem;margin-left:4px"></span>
 </div>
+
+<style>
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+</style>
 
 <!-- ── PAGE HERO ── -->
 <div class="page-hero">
   <h1>Today's <span class="hero-accent">Menu</span></h1>
-  <p>Fresh, hot and ready — order now for quick pickup</p>
+  <p>Fresh, hot and ready – order now for quick pickup</p>
 </div>
 
 <!-- ── MENU TOOLBAR ── -->
@@ -57,79 +67,56 @@
 
 <!-- ── MAIN CONTENT ── -->
 <div class="page-content">
-
-  <!-- Recommendations -->
   <div id="rec-section" class="rec-strip mb-3">
     <div class="rec-strip-header">🔥 Popular right now</div>
     <div class="rec-items" id="recommendations"></div>
   </div>
-
-  <!-- Menu Grid -->
   <div class="section-header">
     <h2 class="section-title" id="menu-section-title">All Items</h2>
     <span style="font-size:0.82rem;color:var(--text-muted)" id="items-count"></span>
   </div>
   <div class="menu-grid" id="menuItems"></div>
-
 </div>
 
-<!-- ── CART SIDEBAR OVERLAY ── -->
+<!-- ── CART OVERLAY ── -->
 <div class="cart-overlay" id="cart-overlay" onclick="closeCart()"></div>
-
 <div class="cart-sidebar" id="cart-sidebar">
   <div class="cart-header">
     <h3>🛒 Your Cart</h3>
     <button class="cart-close" onclick="closeCart()">✕</button>
   </div>
   <div class="cart-items" id="cart-items">
-    <div class="cart-empty">
-      <div class="empty-icon">🛒</div>
-      <p>Your cart is empty</p>
-    </div>
+    <div class="cart-empty"><div class="empty-icon">🛒</div><p>Your cart is empty</p></div>
   </div>
   <div class="cart-footer">
-    <div class="cart-subtotal">
-      <span id="cart-count-label">0 items</span>
-    </div>
-    <div class="cart-total">
-      <span>Total</span>
-      <span id="cart-total">₹0</span>
-    </div>
+    <div class="cart-subtotal"><span id="cart-count-label">0 items</span></div>
+    <div class="cart-total"><span>Total</span><span id="cart-total">₹0</span></div>
     <div class="pickup-select">
       <label>Pickup Time</label>
-      <select id="pickupTimeInput">
-        <option value="">ASAP (~15 mins)</option>
-      </select>
+      <select id="pickupTimeInput"><option value="">ASAP (~15 mins)</option></select>
     </div>
     <button class="btn btn-primary btn-full btn-lg" onclick="placeOrder()">Place Order →</button>
   </div>
 </div>
 
-<!-- ── FLOATING CART BUTTON ── -->
 <button class="cart-btn" id="cart-fab" onclick="openCart()"
   style="position:fixed;bottom:1.5rem;right:1.5rem;z-index:150;box-shadow:var(--shadow-lg)">
   🛒 Cart <span class="cart-count" id="cart-count">0</span>
 </button>
 
-<!-- ── TOAST ── -->
 <div id="toast-container"></div>
 
 <script>
   const API   = 'http://localhost:3000';
   const token = localStorage.getItem('token');
   const user  = JSON.parse(localStorage.getItem('user') || '{}');
-
   if (!token || !user) window.location.href = 'index.html';
-
-  // Set user info
   document.getElementById('user-name').textContent   = (user.name || 'Student').split(' ')[0];
   document.getElementById('user-avatar').textContent = (user.name || 'S')[0].toUpperCase();
-
   function logout() { localStorage.clear(); window.location.href = 'index.html'; }
 
-  // ── Toast ────────────────────────────────────────────────────
   function toast(msg, type = 'success') {
-    const icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+    const icons = { success:'✅', error:'❌', info:'ℹ️', warning:'⚠️' };
     const el = document.createElement('div');
     el.className = `toast ${type}`;
     el.innerHTML = `<span>${icons[type]||'ℹ️'}</span><span>${msg}</span>`;
@@ -137,41 +124,74 @@
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3000);
   }
 
-  // ── Cart state ───────────────────────────────────────────────
-  let cart     = [];
-  let allItems = [];
-  let activeCategory = 'all';
+  // ── Canteen Status Banner ───────────────────────────────────────
+  function fmt12(hhmm) {
+    if (!hhmm) return '';
+    const [h, m] = hhmm.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${h%12||12}:${m.toString().padStart(2,'0')} ${ampm}`;
+  }
+
+  async function checkCanteenStatus() {
+    try {
+      const res  = await fetch(`${API}/api/admin/canteen-status`);
+      const data = await res.json();
+      const banner = document.getElementById('canteen-banner');
+      const dot    = document.getElementById('canteen-dot');
+      const text   = document.getElementById('canteen-status-text');
+      const hours  = document.getElementById('canteen-hours');
+
+      text.textContent = data.message;
+
+      if (data.isOpen) {
+        banner.style.background = 'var(--teal-pale)';
+        banner.style.color      = 'var(--teal-dark)';
+        banner.style.borderBottom = '1.5px solid rgba(13,115,119,0.15)';
+        dot.style.background    = 'var(--teal)';
+        dot.style.animation     = 'blink 2s infinite';
+        hours.textContent       = `· Open ${fmt12(data.openTime)} – ${fmt12(data.closeTime)}`;
+      } else {
+        banner.style.background = '#FEE2E2';
+        banner.style.color      = 'var(--red)';
+        banner.style.borderBottom = '1.5px solid rgba(229,62,62,0.2)';
+        dot.style.background    = 'var(--red)';
+        dot.style.animation     = 'none';
+        hours.textContent       = '';
+      }
+    } catch (_) {
+      document.getElementById('canteen-status-text').textContent = 'Canteen status unavailable';
+    }
+  }
+
+  // ── Cart & Menu ─────────────────────────────────────────────────
+  let cart = [], allItems = [], activeCategory = 'all';
 
   const foodEmojis = {
-    'Masala Dosa':'🫓','Idli Sambar (2 pcs)':'🍽️','Poha':'🥣',
+    'Masala Dosa':'🫔','Idli Sambar (2 pcs)':'🍽️','Poha':'🥣',
     'Veg Meals':'🍱','Chicken Biryani':'🍛','Paneer Fried Rice':'🍚',
     'Vada Pav':'🥙','Samosa (2 pcs)':'🥟','Pav Bhaji':'🍲',
     'Masala Chai':'☕','Filter Coffee':'☕','Mango Lassi':'🥭'
   };
 
-  // ── Pickup time slots ────────────────────────────────────────
   function populatePickupTimes() {
     const sel = document.getElementById('pickupTimeInput');
     const now = new Date();
     for (let i = 1; i <= 8; i++) {
       const t = new Date(now.getTime() + i * 15 * 60000);
-      const label = t.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const label = t.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit' });
       const opt = document.createElement('option');
-      opt.value = label;
-      opt.textContent = label;
+      opt.value = label; opt.textContent = label;
       sel.appendChild(opt);
     }
   }
   populatePickupTimes();
 
-  // ── Build menu card ──────────────────────────────────────────
   function makeCard(item) {
     const emoji     = foodEmojis[item.name] || '🍽️';
     const cat       = (item.category || '').toLowerCase();
     const stock     = item.stock ?? item.stockCount ?? 0;
     const available = (item.available ?? item.isAvailable ?? true) && stock > 0;
     const lowStock  = stock > 0 && stock <= 10;
-
     return `
       <div class="menu-card ${!available ? 'out-of-stock' : ''}">
         <div class="menu-card-img">
@@ -195,53 +215,32 @@
       </div>`;
   }
 
-  // ── Load menu ────────────────────────────────────────────────
   async function loadMenu() {
     try {
       const res = await fetch(`${API}/api/menu`);
       allItems  = await res.json();
-
-      // Recommendations
       const top3 = [...allItems].sort((a,b) => b.orderCount - a.orderCount).slice(0,3);
-      document.getElementById('recommendations').innerHTML = top3.map(item => {
-        const stock = item.stock ?? item.stockCount ?? 0;
-        return `<div class="rec-pill" onclick='addToCart(${JSON.stringify(item)})'>
+      document.getElementById('recommendations').innerHTML = top3.map(item =>
+        `<div class="rec-pill" onclick='addToCart(${JSON.stringify(item)})'>
           ${foodEmojis[item.name] || '🍽️'} ${item.name}
           <span class="rec-price">₹${item.price}</span>
-        </div>`;
-      }).join('');
-
+        </div>`
+      ).join('');
       renderMenu();
-    } catch (err) {
-      toast('Failed to load menu. Is server running?', 'error');
-    }
+    } catch { toast('Failed to load menu. Is server running?', 'error'); }
   }
 
-  // ── Render filtered menu ─────────────────────────────────────
   function renderMenu() {
     const search = document.getElementById('searchInput').value.toLowerCase();
     let filtered = allItems;
-
-    if (activeCategory !== 'all') {
-      filtered = filtered.filter(i => i.category === activeCategory);
-    }
-    if (search) {
-      filtered = filtered.filter(i => i.name.toLowerCase().includes(search));
-    }
-
+    if (activeCategory !== 'all') filtered = filtered.filter(i => i.category === activeCategory);
+    if (search) filtered = filtered.filter(i => i.name.toLowerCase().includes(search));
     const container = document.getElementById('menuItems');
     document.getElementById('items-count').textContent = `${filtered.length} items`;
-
     if (!filtered.length) {
-      container.innerHTML = `
-        <div class="no-results">
-          <div class="no-icon">🔍</div>
-          <h3>No items found</h3>
-          <p>Try a different search or category</p>
-        </div>`;
+      container.innerHTML = `<div class="no-results"><div class="no-icon">🔍</div><h3>No items found</h3><p>Try a different search or category</p></div>`;
       return;
     }
-
     container.innerHTML = filtered.map(makeCard).join('');
   }
 
@@ -253,16 +252,13 @@
     document.getElementById('menu-section-title').textContent = titles[cat] || cat;
     renderMenu();
   }
-
   function filterMenu() { renderMenu(); }
 
-  // ── Cart functions ───────────────────────────────────────────
   function addToCart(item) {
-    const existing = cart.find(c => c.menuItemId === item._id);
-    if (existing) existing.quantity++;
-    else cart.push({ menuItemId: item._id, name: item.name, price: item.price, quantity: 1 });
-    updateCart();
-    toast(`${item.name} added to cart!`);
+    const ex = cart.find(c => c.menuItemId === item._id);
+    if (ex) ex.quantity++;
+    else cart.push({ menuItemId:item._id, name:item.name, price:item.price, quantity:1 });
+    updateCart(); toast(`${item.name} added to cart!`);
   }
 
   function changeQty(id, delta) {
@@ -270,8 +266,7 @@
     if (!item) return;
     item.quantity += delta;
     if (item.quantity <= 0) cart = cart.filter(c => c.menuItemId !== id);
-    updateCart();
-    renderCartSidebar();
+    updateCart(); renderCartSidebar();
   }
 
   function updateCart() {
@@ -304,45 +299,25 @@
       </div>`).join('');
   }
 
-  function openCart()  {
-    document.getElementById('cart-sidebar').classList.add('open');
-    document.getElementById('cart-overlay').classList.add('open');
-  }
-  function closeCart() {
-    document.getElementById('cart-sidebar').classList.remove('open');
-    document.getElementById('cart-overlay').classList.remove('open');
-  }
+  function openCart()  { document.getElementById('cart-sidebar').classList.add('open');    document.getElementById('cart-overlay').classList.add('open'); }
+  function closeCart() { document.getElementById('cart-sidebar').classList.remove('open'); document.getElementById('cart-overlay').classList.remove('open'); }
 
-  // ── Place order ──────────────────────────────────────────────
   async function placeOrder() {
     if (!cart.length) { toast('Your cart is empty!', 'error'); return; }
-
     const pickupTime = document.getElementById('pickupTimeInput').value || 'ASAP';
     toast('Placing your order…', 'info');
-
     try {
       const res  = await fetch(`${API}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ items: cart, pickupTime })
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body: JSON.stringify({ items:cart, pickupTime })
       });
       const data = await res.json();
-
-      if (res.ok) {
-        toast(`Order placed! Pickup at ${pickupTime} ✅`, 'success');
-        cart = [];
-        updateCart();
-        closeCart();
-        loadMenu();
-      } else {
-        toast('❌ ' + data.message, 'error');
-      }
-    } catch (err) {
-      toast('Server error! Please try again.', 'error');
-    }
+      if (res.ok) { toast(`Order placed! Pickup at ${pickupTime} ✅`, 'success'); cart=[]; updateCart(); closeCart(); loadMenu(); }
+      else toast('❌ ' + data.message, 'error');
+    } catch { toast('Server error! Please try again.', 'error'); }
   }
 
-  // ── Rush hour check ──────────────────────────────────────────
   async function checkRush() {
     try {
       const res  = await fetch(`${API}/api/orders/rush-status`);
@@ -353,12 +328,13 @@
     } catch (_) {}
   }
 
-  // ── Init ─────────────────────────────────────────────────────
+  // ── Init ────────────────────────────────────────────────────────
   loadMenu();
   checkRush();
+  checkCanteenStatus();
   setInterval(loadMenu, 30000);
   setInterval(checkRush, 30000);
+  setInterval(checkCanteenStatus, 60000);
 </script>
-
 </body>
 </html>
