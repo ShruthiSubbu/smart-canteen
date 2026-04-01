@@ -5,6 +5,86 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Smart Canteen – Menu</title>
   <link rel="stylesheet" href="../css/style.css" />
+  <style>
+    /* ── Star Rating Display ── */
+    .stars-display {
+      display: inline-flex; align-items: center; gap: 2px;
+      font-size: 0.85rem; line-height: 1;
+    }
+    .star-filled  { color: #F4831F; }
+    .star-half    { color: #F4831F; opacity: 0.6; }
+    .star-empty   { color: #D1D5DB; }
+
+    .rating-row {
+      display: flex; align-items: center; gap: 6px;
+      margin: 6px 0 2px; flex-wrap: wrap;
+    }
+    .rating-count {
+      font-size: 0.72rem; color: var(--text-muted); font-weight: 500;
+    }
+    .rate-link {
+      font-size: 0.72rem; color: var(--teal); font-weight: 600;
+      cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+      background: none; border: none; padding: 0;
+    }
+    .rate-link:hover { color: var(--teal-dark); }
+
+    /* ── Rating Modal ── */
+    .rating-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(4px); z-index: 600;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .rating-modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .rating-modal {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 2rem; max-width: 400px; width: 90%;
+      box-shadow: var(--shadow-lg);
+      transform: scale(0.95); transition: transform 0.2s;
+    }
+    .rating-modal-overlay.open .rating-modal { transform: scale(1); }
+
+    .rating-modal-title {
+      font-family: var(--font-heading); font-size: 1.1rem;
+      font-weight: 700; margin-bottom: 0.2rem; color: var(--text);
+    }
+    .rating-modal-sub {
+      font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.4rem;
+    }
+
+    /* Interactive star picker */
+    .star-picker {
+      display: flex; gap: 8px; margin-bottom: 1.2rem;
+      justify-content: center;
+    }
+    .star-pick-btn {
+      font-size: 2rem; cursor: pointer; background: none; border: none;
+      transition: transform 0.12s; line-height: 1; color: #D1D5DB;
+      padding: 0;
+    }
+    .star-pick-btn.active { color: #F4831F; transform: scale(1.15); }
+    .star-pick-btn:hover  { color: #F4831F; transform: scale(1.2); }
+
+    .star-label {
+      text-align: center; font-size: 0.85rem; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 1rem; min-height: 1.2em;
+    }
+
+    .rating-comment {
+      width: 100%; padding: 10px 12px;
+      border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+      font-family: var(--font-body); font-size: 0.88rem;
+      outline: none; background: var(--bg); color: var(--text);
+      resize: vertical; min-height: 80px; margin-bottom: 1rem;
+      box-sizing: border-box; transition: border-color 0.15s;
+    }
+    .rating-comment:focus { border-color: var(--teal); }
+
+    .rating-modal-btns { display: flex; gap: 10px; }
+    #rating-submit-msg { margin-top: 10px; font-size: 0.85rem; font-weight: 600; }
+  </style>
 </head>
 <body>
 
@@ -104,6 +184,33 @@
   🛒 Cart <span class="cart-count" id="cart-count">0</span>
 </button>
 
+<!-- ══ RATING MODAL ══════════════════════════════════════════════ -->
+<div class="rating-modal-overlay" id="ratingModal" onclick="handleRatingOverlayClick(event)">
+  <div class="rating-modal">
+    <div class="rating-modal-title">⭐ Rate this item</div>
+    <div class="rating-modal-sub" id="rating-item-name">—</div>
+
+    <!-- Star picker -->
+    <div class="star-picker" id="star-picker">
+      <button class="star-pick-btn" onclick="pickStar(1)">★</button>
+      <button class="star-pick-btn" onclick="pickStar(2)">★</button>
+      <button class="star-pick-btn" onclick="pickStar(3)">★</button>
+      <button class="star-pick-btn" onclick="pickStar(4)">★</button>
+      <button class="star-pick-btn" onclick="pickStar(5)">★</button>
+    </div>
+    <div class="star-label" id="star-label">Tap a star to rate</div>
+
+    <textarea class="rating-comment" id="rating-comment"
+      placeholder="Add a comment (optional)…"></textarea>
+
+    <div class="rating-modal-btns">
+      <button class="btn btn-primary btn-full" onclick="submitRating()">Submit Rating</button>
+      <button class="btn btn-ghost" onclick="closeRatingModal()">Cancel</button>
+    </div>
+    <div id="rating-submit-msg"></div>
+  </div>
+</div>
+
 <div id="toast-container"></div>
 
 <script>
@@ -124,7 +231,7 @@
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3000);
   }
 
-  // ── Canteen Status Banner ───────────────────────────────────────
+  // ── Canteen Status Banner ────────────────────────────────────────
   function fmt12(hhmm) {
     if (!hhmm) return '';
     const [h, m] = hhmm.split(':').map(Number);
@@ -140,30 +247,40 @@
       const dot    = document.getElementById('canteen-dot');
       const text   = document.getElementById('canteen-status-text');
       const hours  = document.getElementById('canteen-hours');
-
       text.textContent = data.message;
-
       if (data.isOpen) {
-        banner.style.background = 'var(--teal-pale)';
-        banner.style.color      = 'var(--teal-dark)';
+        banner.style.background   = 'var(--teal-pale)';
+        banner.style.color        = 'var(--teal-dark)';
         banner.style.borderBottom = '1.5px solid rgba(13,115,119,0.15)';
-        dot.style.background    = 'var(--teal)';
-        dot.style.animation     = 'blink 2s infinite';
-        hours.textContent       = `· Open ${fmt12(data.openTime)} – ${fmt12(data.closeTime)}`;
+        dot.style.background      = 'var(--teal)';
+        dot.style.animation       = 'blink 2s infinite';
+        hours.textContent         = `· Open ${fmt12(data.openTime)} – ${fmt12(data.closeTime)}`;
       } else {
-        banner.style.background = '#FEE2E2';
-        banner.style.color      = 'var(--red)';
+        banner.style.background   = '#FEE2E2';
+        banner.style.color        = 'var(--red)';
         banner.style.borderBottom = '1.5px solid rgba(229,62,62,0.2)';
-        dot.style.background    = 'var(--red)';
-        dot.style.animation     = 'none';
-        hours.textContent       = '';
+        dot.style.background      = 'var(--red)';
+        dot.style.animation       = 'none';
+        hours.textContent         = '';
       }
     } catch (_) {
       document.getElementById('canteen-status-text').textContent = 'Canteen status unavailable';
     }
   }
 
-  // ── Cart & Menu ─────────────────────────────────────────────────
+  // ── Star helpers ─────────────────────────────────────────────────
+  function starsHTML(avg, total) {
+    if (!total) return '<span style="font-size:0.72rem;color:var(--text-muted)">No ratings yet</span>';
+    let html = '';
+    for (let i = 1; i <= 5; i++) {
+      if (avg >= i)        html += '<span class="star-filled">★</span>';
+      else if (avg >= i-0.5) html += '<span class="star-half">★</span>';
+      else                 html += '<span class="star-empty">★</span>';
+    }
+    return html;
+  }
+
+  // ── Menu card ────────────────────────────────────────────────────
   let cart = [], allItems = [], activeCategory = 'all';
 
   const foodEmojis = {
@@ -192,6 +309,13 @@
     const stock     = item.stock ?? item.stockCount ?? 0;
     const available = (item.available ?? item.isAvailable ?? true) && stock > 0;
     const lowStock  = stock > 0 && stock <= 10;
+    const avg       = item.avgRating    || 0;
+    const total     = item.totalRatings || 0;
+
+    // Safe JSON for onclick — avoid quote issues
+    const safeId   = item._id;
+    const safeName = item.name.replace(/'/g, "\\'");
+
     return `
       <div class="menu-card ${!available ? 'out-of-stock' : ''}">
         <div class="menu-card-img">
@@ -202,6 +326,19 @@
         <div class="menu-card-body">
           <div class="menu-card-name">${item.name}</div>
           <div class="menu-card-desc">${item.description || 'A delicious canteen favourite'}</div>
+
+          <!-- ★ Ratings row -->
+          <div class="rating-row">
+            <div class="stars-display">${starsHTML(avg, total)}</div>
+            ${total
+              ? `<span class="rating-count">${avg} (${total} review${total !== 1 ? 's' : ''})</span>`
+              : '<span class="rating-count">Be the first to rate!</span>'
+            }
+            <button class="rate-link" onclick="openRatingModal('${safeId}', '${safeName}')">
+              ✏️ Rate
+            </button>
+          </div>
+
           <div class="menu-card-footer">
             <div class="menu-price"><span>₹</span>${item.price}</div>
             <button class="add-btn" onclick='addToCart(${JSON.stringify(item)})' ${!available ? 'disabled' : ''}>
@@ -235,13 +372,13 @@
     let filtered = allItems;
     if (activeCategory !== 'all') filtered = filtered.filter(i => i.category === activeCategory);
     if (search) filtered = filtered.filter(i => i.name.toLowerCase().includes(search));
-    const container = document.getElementById('menuItems');
     document.getElementById('items-count').textContent = `${filtered.length} items`;
     if (!filtered.length) {
-      container.innerHTML = `<div class="no-results"><div class="no-icon">🔍</div><h3>No items found</h3><p>Try a different search or category</p></div>`;
+      document.getElementById('menuItems').innerHTML =
+        `<div class="no-results"><div class="no-icon">🔍</div><h3>No items found</h3><p>Try a different search or category</p></div>`;
       return;
     }
-    container.innerHTML = filtered.map(makeCard).join('');
+    document.getElementById('menuItems').innerHTML = filtered.map(makeCard).join('');
   }
 
   function filterCategory(cat, btn) {
@@ -254,6 +391,7 @@
   }
   function filterMenu() { renderMenu(); }
 
+  // ── Cart ─────────────────────────────────────────────────────────
   function addToCart(item) {
     const ex = cart.find(c => c.menuItemId === item._id);
     if (ex) ex.quantity++;
@@ -318,6 +456,77 @@
     } catch { toast('Server error! Please try again.', 'error'); }
   }
 
+  // ── Rating Modal ─────────────────────────────────────────────────
+  let ratingItemId   = null;
+  let selectedStars  = 0;
+  const starLabels   = ['', 'Poor 😞', 'Fair 😐', 'Good 😊', 'Great 😄', 'Excellent 🤩'];
+
+  function openRatingModal(itemId, itemName) {
+    ratingItemId  = itemId;
+    selectedStars = 0;
+    document.getElementById('rating-item-name').textContent  = itemName;
+    document.getElementById('rating-comment').value          = '';
+    document.getElementById('rating-submit-msg').textContent = '';
+    document.getElementById('star-label').textContent        = 'Tap a star to rate';
+    // Reset stars
+    document.querySelectorAll('.star-pick-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('ratingModal').classList.add('open');
+  }
+
+  function closeRatingModal() {
+    document.getElementById('ratingModal').classList.remove('open');
+  }
+
+  function handleRatingOverlayClick(e) {
+    if (e.target === document.getElementById('ratingModal')) closeRatingModal();
+  }
+
+  function pickStar(n) {
+    selectedStars = n;
+    document.getElementById('star-label').textContent = starLabels[n];
+    document.querySelectorAll('.star-pick-btn').forEach((b, i) => {
+      b.classList.toggle('active', i < n);
+    });
+  }
+
+  async function submitRating() {
+    const msg = document.getElementById('rating-submit-msg');
+    if (!selectedStars) {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '❌ Please select a star rating first.';
+      return;
+    }
+    const comment = document.getElementById('rating-comment').value.trim();
+    msg.style.color = 'var(--teal)';
+    msg.textContent = 'Submitting…';
+
+    try {
+      const res  = await fetch(`${API}/api/menu/${ratingItemId}/rate`, {
+        method:  'POST',
+        headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
+        body:    JSON.stringify({ stars: selectedStars, comment })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        msg.style.color = 'var(--green)';
+        msg.textContent = `✅ Rated ${selectedStars}★ — Thank you!`;
+        toast(`Rating submitted! Avg: ${data.avgRating}★`, 'success');
+        setTimeout(() => { closeRatingModal(); loadMenu(); }, 1200);
+      } else {
+        msg.style.color = 'var(--red)';
+        // If they haven't ordered it, show a helpful message
+        msg.textContent = '❌ ' + (data.message === 'You can only rate items you have ordered'
+          ? 'Order this item first before rating it!'
+          : data.message);
+      }
+    } catch {
+      msg.style.color = 'var(--red)';
+      msg.textContent = '❌ Server error. Try again.';
+    }
+  }
+
+  // ── Rush check ───────────────────────────────────────────────────
   async function checkRush() {
     try {
       const res  = await fetch(`${API}/api/orders/rush-status`);
@@ -328,7 +537,7 @@
     } catch (_) {}
   }
 
-  // ── Init ────────────────────────────────────────────────────────
+  // ── Init ─────────────────────────────────────────────────────────
   loadMenu();
   checkRush();
   checkCanteenStatus();

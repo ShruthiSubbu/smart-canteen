@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>My Orders — Smart Canteen</title>
   <link rel="stylesheet" href="../css/style.css" />
+  <!-- QR Code library — no npm needed -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     /* ── Extra styles specific to orders page ── */
     .orders-page { max-width: 760px; margin: 0 auto; padding: 2rem 1.5rem; }
@@ -20,8 +22,13 @@
       animation: dot-pulse 2s infinite;
     }
 
-    .order-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); margin-bottom: 1.2rem; overflow: hidden; transition: box-shadow 0.2s; }
+    .order-card {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 1.2rem;
+      overflow: hidden; transition: box-shadow 0.2s;
+    }
     .order-card:hover { box-shadow: var(--shadow-md); }
+    .order-card.ready-glow { border-color: var(--green); box-shadow: 0 0 0 3px rgba(47,133,90,0.12); }
 
     .order-header {
       padding: 1rem 1.3rem; background: var(--bg); border-bottom: 1px solid var(--border);
@@ -33,31 +40,27 @@
 
     /* ── STATUS TRACKER ── */
     .tracker-wrap { padding: 1.2rem 1.5rem 0.8rem; }
-    .tracker {
-      display: flex; align-items: flex-start; position: relative;
-    }
+    .tracker { display: flex; align-items: flex-start; position: relative; }
     .tracker-step {
       flex: 1; display: flex; flex-direction: column; align-items: center;
       position: relative; z-index: 1;
     }
-    /* connecting line */
     .tracker-step:not(:last-child)::after {
       content: ''; position: absolute;
       top: 14px; left: 50%; width: 100%; height: 2px;
       background: var(--border); z-index: 0; transition: background 0.4s;
     }
-    .tracker-step.done:not(:last-child)::after  { background: var(--green); }
+    .tracker-step.done:not(:last-child)::after   { background: var(--green); }
     .tracker-step.active:not(:last-child)::after { background: linear-gradient(to right, var(--green), var(--border)); }
 
     .tracker-dot {
       width: 30px; height: 30px; border-radius: 50%;
       background: var(--bg); border: 2px solid var(--border);
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.85rem; position: relative; z-index: 2;
-      transition: all 0.3s;
+      font-size: 0.85rem; position: relative; z-index: 2; transition: all 0.3s;
     }
-    .tracker-step.done .tracker-dot   { background: var(--green); border-color: var(--green); color: white; }
-    .tracker-step.active .tracker-dot { background: var(--saffron); border-color: var(--saffron); color: white; box-shadow: 0 0 0 5px rgba(244,131,31,0.18); animation: pulse-tracker 1.6s infinite; }
+    .tracker-step.done .tracker-dot     { background: var(--green); border-color: var(--green); color: white; }
+    .tracker-step.active .tracker-dot   { background: var(--saffron); border-color: var(--saffron); color: white; box-shadow: 0 0 0 5px rgba(244,131,31,0.18); animation: pulse-tracker 1.6s infinite; }
     .tracker-step.cancelled .tracker-dot { background: var(--red); border-color: var(--red); color: white; }
 
     @keyframes pulse-tracker {
@@ -69,25 +72,16 @@
       font-size: 0.7rem; font-weight: 600; color: var(--text-muted);
       margin-top: 6px; text-align: center; white-space: nowrap;
     }
-    .tracker-step.done .tracker-label     { color: var(--green); }
-    .tracker-step.active .tracker-label   { color: var(--saffron-dark); }
+    .tracker-step.done .tracker-label      { color: var(--green); }
+    .tracker-step.active .tracker-label    { color: var(--saffron-dark); }
     .tracker-step.cancelled .tracker-label { color: var(--red); }
+    .tracker-time { font-size: 0.65rem; color: var(--text-light); margin-top: 2px; text-align: center; }
 
-    .tracker-time {
-      font-size: 0.65rem; color: var(--text-light);
-      margin-top: 2px; text-align: center;
-    }
-
-    /* ── STATUS BANNER (inside card) ── */
+    /* ── STATUS BANNER ── */
     .status-banner {
-      margin: 0 1.3rem 1rem;
-      padding: 9px 14px;
-      border-radius: var(--radius-sm);
-      font-size: 0.82rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      margin: 0 1.3rem 1rem; padding: 9px 14px;
+      border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 600;
+      display: flex; align-items: center; gap: 8px;
     }
     .status-banner.pending   { background: #FEF3C7; color: #92400E; border: 1px solid rgba(214,158,46,0.3); }
     .status-banner.preparing { background: #DBEAFE; color: #1E3A5F; border: 1px solid rgba(56,97,161,0.2); }
@@ -95,7 +89,7 @@
     .status-banner.completed { background: #F3F4F6; color: #374151; border: 1px solid #E5E7EB; }
     .status-banner.cancelled { background: #FEE2E2; color: var(--red); border: 1px solid rgba(229,62,62,0.2); }
 
-    /* ── ORDER ITEMS LIST ── */
+    /* ── ORDER ITEMS ── */
     .order-items { padding: 0 1.3rem 0.5rem; }
     .order-items-header { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
     .order-item-row {
@@ -103,8 +97,8 @@
       padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 0.88rem;
     }
     .order-item-row:last-child { border-bottom: none; }
-    .order-item-name { color: var(--text); }
-    .order-item-qty  { font-size: 0.8rem; color: var(--text-muted); margin-left: 6px; }
+    .order-item-name  { color: var(--text); }
+    .order-item-qty   { font-size: 0.8rem; color: var(--text-muted); margin-left: 6px; }
     .order-item-price { font-weight: 600; color: var(--text); }
 
     /* ── ORDER FOOTER ── */
@@ -113,18 +107,88 @@
       display: flex; align-items: center; justify-content: space-between;
       flex-wrap: wrap; gap: 0.5rem; background: var(--bg);
     }
-    .order-pickup { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
-    .order-total-row { display: flex; align-items: center; gap: 10px; }
+    .order-pickup      { font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 5px; }
+    .order-total-row   { display: flex; align-items: center; gap: 10px; }
     .order-total-label { font-size: 0.82rem; color: var(--text-muted); }
-    .order-total-amt { font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700; color: var(--saffron-dark); }
+    .order-total-amt   { font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700; color: var(--saffron-dark); }
 
-    /* ── EMPTY STATE ── */
+    /* ── QR BUTTON ── */
+    .qr-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 14px; border-radius: 99px; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; transition: all 0.18s; border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--text-muted);
+    }
+    .qr-btn:hover { border-color: var(--teal); color: var(--teal); background: var(--teal-pale); }
+    .qr-btn.ready-pulse {
+      border-color: var(--green); color: var(--green); background: var(--green-pale);
+      animation: qr-pulse 2s infinite;
+    }
+    @keyframes qr-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(47,133,90,0.3); }
+      50%      { box-shadow: 0 0 0 6px rgba(47,133,90,0); }
+    }
+
+    /* ── QR MODAL ── */
+    .qr-modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      backdrop-filter: blur(4px); z-index: 500;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    }
+    .qr-modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .qr-modal {
+      background: var(--surface); border-radius: var(--radius);
+      padding: 2rem; max-width: 360px; width: 90%;
+      box-shadow: var(--shadow-lg); text-align: center;
+      transform: scale(0.95); transition: transform 0.2s;
+    }
+    .qr-modal-overlay.open .qr-modal { transform: scale(1); }
+
+    .qr-modal-title {
+      font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700;
+      margin-bottom: 0.3rem; color: var(--text);
+    }
+    .qr-modal-sub { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.4rem; }
+
+    #qr-canvas-wrap {
+      display: flex; align-items: center; justify-content: center;
+      background: white; border-radius: 12px; padding: 18px;
+      margin: 0 auto 1.4rem; width: fit-content;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+
+    .qr-order-info {
+      background: var(--bg); border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 16px;
+      margin-bottom: 1.2rem; text-align: left;
+    }
+    .qr-info-row {
+      display: flex; justify-content: space-between;
+      font-size: 0.82rem; padding: 3px 0;
+    }
+    .qr-info-row span:first-child { color: var(--text-muted); }
+    .qr-info-row span:last-child  { font-weight: 600; color: var(--text); }
+
+    .qr-status-chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 99px;
+      font-size: 0.78rem; font-weight: 700; margin-bottom: 1.2rem;
+    }
+    .qr-status-chip.ready     { background: var(--green-pale); color: var(--green); }
+    .qr-status-chip.pending   { background: #FEF3C7; color: #92400E; }
+    .qr-status-chip.preparing { background: #DBEAFE; color: #1E3A5F; }
+    .qr-status-chip.completed { background: #F3F4F6; color: #374151; }
+    .qr-status-chip.cancelled { background: #FEE2E2; color: var(--red); }
+
+    .qr-hint { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 1.2rem; line-height: 1.5; }
+
+    /* ── EMPTY / SKELETON ── */
     .empty-state { text-align: center; padding: 5rem 2rem; color: var(--text-muted); }
     .empty-state .empty-icon { font-size: 3rem; margin-bottom: 1rem; opacity: 0.5; }
     .empty-state h3 { font-family: var(--font-heading); font-size: 1.2rem; color: var(--text); margin-bottom: 0.5rem; }
     .empty-state p  { font-size: 0.9rem; margin-bottom: 1.5rem; }
-
-    /* ── LOADING SKELETONS ── */
     .skeleton-order { height: 200px; border-radius: var(--radius); margin-bottom: 1.2rem; }
   </style>
 </head>
@@ -163,39 +227,49 @@
     <h2 class="section-title">Order History</h2>
     <span id="refresh-status" style="font-size:0.78rem;color:var(--text-muted)">Refreshing every 15s</span>
   </div>
-
   <div id="orders-container">
-    <!-- skeletons while loading -->
     <div class="skeleton skeleton-order"></div>
     <div class="skeleton skeleton-order"></div>
   </div>
 </div>
 
-<!-- ── TOAST CONTAINER ── -->
+<!-- ══ QR MODAL ══════════════════════════════════════════════════ -->
+<div class="qr-modal-overlay" id="qrModal" onclick="handleModalClick(event)">
+  <div class="qr-modal">
+    <div class="qr-modal-title">📱 Pickup QR Code</div>
+    <div class="qr-modal-sub">Show this at the counter when collecting your order</div>
+
+    <div id="qr-status-chip-wrap"></div>
+    <div id="qr-canvas-wrap"></div>
+
+    <div class="qr-order-info" id="qr-order-info"></div>
+
+    <p class="qr-hint">The canteen staff will scan this QR code to verify and hand over your order.</p>
+
+    <button class="btn btn-primary btn-full" onclick="closeQR()">Done</button>
+  </div>
+</div>
+
+<!-- ── TOAST ── -->
 <div id="toast-container"></div>
 
 <script>
-const API = 'http://localhost:3000';
+const API   = 'http://localhost:3000';
 const token = localStorage.getItem('token');
 const user  = JSON.parse(localStorage.getItem('user') || '{}');
 
-// ── Auth guard ──────────────────────────────────────────────────
 if (!token) { window.location.href = 'index.html'; }
 
-// ── Set user info ───────────────────────────────────────────────
 if (user.name) {
-  document.getElementById('user-name').textContent = user.name.split(' ')[0];
+  document.getElementById('user-name').textContent   = user.name.split(' ')[0];
   document.getElementById('user-avatar').textContent = user.name[0].toUpperCase();
 }
 
-function logout() {
-  localStorage.clear();
-  window.location.href = 'index.html';
-}
+function logout() { localStorage.clear(); window.location.href = 'index.html'; }
 
-// ── Toast ───────────────────────────────────────────────────────
+// ── Toast ────────────────────────────────────────────────────────
 function toast(msg, type = 'info') {
-  const icons = { info: 'ℹ️', success: '✅', error: '❌', warning: '⚠️' };
+  const icons = { info:'ℹ️', success:'✅', error:'❌', warning:'⚠️' };
   const el = document.createElement('div');
   el.className = `toast ${type}`;
   el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
@@ -203,83 +277,111 @@ function toast(msg, type = 'info') {
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3500);
 }
 
-// ── Status config ───────────────────────────────────────────────
+// ── Status config ────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  Pending:   { icon: '⏳', label: 'Order Placed',   banner: 'pending',   msg: 'Your order has been received. Hang tight!' },
-  Preparing: { icon: '👨‍🍳', label: 'Preparing',      banner: 'preparing', msg: 'The canteen team is cooking your order now.' },
-  Ready:     { icon: '🔔', label: 'Ready to Pick Up', banner: 'ready',    msg: 'Your order is ready! Head to the counter.' },
-  Completed: { icon: '✅', label: 'Completed',        banner: 'completed', msg: 'Order picked up. Enjoy your meal!' },
-  Cancelled: { icon: '❌', label: 'Cancelled',        banner: 'cancelled', msg: 'This order was cancelled.' }
+  Pending:   { icon:'⏳', label:'Order Placed',    banner:'pending',   msg:'Your order has been received. Hang tight!' },
+  Preparing: { icon:'👨‍🍳', label:'Preparing',       banner:'preparing', msg:'The canteen team is cooking your order now.' },
+  Ready:     { icon:'🔔', label:'Ready to Pick Up', banner:'ready',     msg:'Your order is ready! Head to the counter.' },
+  Completed: { icon:'✅', label:'Completed',         banner:'completed', msg:'Order picked up. Enjoy your meal!' },
+  Cancelled: { icon:'❌', label:'Cancelled',         banner:'cancelled', msg:'This order was cancelled.' }
 };
+const TRACKER_STEPS = ['Pending','Preparing','Ready','Completed'];
 
-// Ordered steps for the tracker (Cancelled shown separately)
-const TRACKER_STEPS = ['Pending', 'Preparing', 'Ready', 'Completed'];
-
-// ── Format helpers ──────────────────────────────────────────────
+// ── Format helpers ───────────────────────────────────────────────
 function formatDate(d) {
-  return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleDateString('en-IN',{ day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit' });
 }
-
 function formatTime(d) {
-  return new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  return new Date(d).toLocaleTimeString('en-IN',{ hour:'2-digit',minute:'2-digit' });
 }
+function shortId(id) { return '#' + id.slice(-6).toUpperCase(); }
 
-function shortId(id) {
-  return '#' + id.slice(-6).toUpperCase();
-}
-
-// ── Get changedAt time for a step from statusHistory ────────────
 function getStepTime(order, status) {
   if (!order.statusHistory) return null;
   const entry = order.statusHistory.find(h => h.status === status);
   return entry ? formatTime(entry.changedAt) : null;
 }
 
-// ── Build tracker HTML ──────────────────────────────────────────
+// ── Tracker HTML ─────────────────────────────────────────────────
 function buildTracker(order) {
   const isCancelled = order.status === 'Cancelled';
+  const currentIdx  = TRACKER_STEPS.indexOf(order.status);
 
-  if (isCancelled) {
-    return `<div class="tracker-wrap">
-      <div class="tracker">
-        ${TRACKER_STEPS.map((step, i) => {
-          const isDone = i === 0; // only Pending was done before cancel
-          const cls = isDone ? 'done' : '';
-          const cfg = STATUS_CONFIG[step];
-          const t = getStepTime(order, step);
-          return `<div class="tracker-step ${cls}">
-            <div class="tracker-dot">${isDone ? '✓' : cfg.icon}</div>
-            <div class="tracker-label">${cfg.label}</div>
-            ${t ? `<div class="tracker-time">${t}</div>` : ''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }
-
-  const currentIdx = TRACKER_STEPS.indexOf(order.status);
-
-  return `<div class="tracker-wrap">
-    <div class="tracker">
-      ${TRACKER_STEPS.map((step, i) => {
-        let cls = '';
-        if (i < currentIdx) cls = 'done';
-        else if (i === currentIdx) cls = 'active';
-        const cfg = STATUS_CONFIG[step];
-        const t = getStepTime(order, step);
-        return `<div class="tracker-step ${cls}">
-          <div class="tracker-dot">${cls === 'done' ? '✓' : cfg.icon}</div>
-          <div class="tracker-label">${cfg.label}</div>
-          ${t ? `<div class="tracker-time">${t}</div>` : ''}
-        </div>`;
-      }).join('')}
-    </div>
-  </div>`;
+  return `<div class="tracker-wrap"><div class="tracker">
+    ${TRACKER_STEPS.map((step, i) => {
+      let cls = '';
+      if (isCancelled)       cls = i === 0 ? 'done' : '';
+      else if (i < currentIdx) cls = 'done';
+      else if (i === currentIdx) cls = 'active';
+      const cfg = STATUS_CONFIG[step];
+      const t   = getStepTime(order, step);
+      return `<div class="tracker-step ${cls}">
+        <div class="tracker-dot">${cls === 'done' ? '✓' : cfg.icon}</div>
+        <div class="tracker-label">${cfg.label}</div>
+        ${t ? `<div class="tracker-time">${t}</div>` : ''}
+      </div>`;
+    }).join('')}
+  </div></div>`;
 }
 
-// ── Build single order card ─────────────────────────────────────
-function buildOrderCard(order) {
+// ── QR Code ──────────────────────────────────────────────────────
+let currentQRCode = null;
+
+function openQR(order) {
+  // Build the QR payload — compact string the admin can read after scanning
+  const payload = [
+    'SMART CANTEEN VIT',
+    `ORDER: ${shortId(order._id)}`,
+    `ID: ${order._id}`,
+    `STUDENT: ${user.name || 'Student'}`,
+    `ITEMS: ${order.items.map(i => `${i.name} x${i.quantity}`).join(', ')}`,
+    `TOTAL: Rs.${order.total}`,
+    `PICKUP: ${order.pickupTime || 'ASAP'}`,
+    `STATUS: ${order.status}`
+  ].join('\n');
+
+  // Status chip
   const cfg = STATUS_CONFIG[order.status] || STATUS_CONFIG['Pending'];
+  document.getElementById('qr-status-chip-wrap').innerHTML =
+    `<div class="qr-status-chip ${order.status.toLowerCase()}">${cfg.icon} ${order.status}</div>`;
+
+  // Order info block
+  document.getElementById('qr-order-info').innerHTML = `
+    <div class="qr-info-row"><span>Order ID</span><span>${shortId(order._id)}</span></div>
+    <div class="qr-info-row"><span>Student</span><span>${user.name || 'Student'}</span></div>
+    <div class="qr-info-row"><span>Items</span><span>${order.items.length} item${order.items.length !== 1 ? 's' : ''}</span></div>
+    <div class="qr-info-row"><span>Total</span><span>₹${order.total}</span></div>
+    <div class="qr-info-row"><span>Pickup</span><span>${order.pickupTime || 'ASAP'}</span></div>`;
+
+  // Clear previous QR and generate new one
+  const wrap = document.getElementById('qr-canvas-wrap');
+  wrap.innerHTML = '';
+  currentQRCode = new QRCode(wrap, {
+    text:           payload,
+    width:          200,
+    height:         200,
+    colorDark:      '#0D7377',   // teal — matches your brand
+    colorLight:     '#ffffff',
+    correctLevel:   QRCode.CorrectLevel.H
+  });
+
+  document.getElementById('qrModal').classList.add('open');
+}
+
+function closeQR() {
+  document.getElementById('qrModal').classList.remove('open');
+}
+
+function handleModalClick(e) {
+  // Close if clicking the dark overlay, not the modal box itself
+  if (e.target === document.getElementById('qrModal')) closeQR();
+}
+
+// ── Order card HTML ──────────────────────────────────────────────
+function buildOrderCard(order) {
+  const cfg      = STATUS_CONFIG[order.status] || STATUS_CONFIG['Pending'];
+  const isReady  = order.status === 'Ready';
+  const orderStr = encodeURIComponent(JSON.stringify(order));
 
   const itemsHtml = order.items.map(item => `
     <div class="order-item-row">
@@ -288,19 +390,28 @@ function buildOrderCard(order) {
     </div>`).join('');
 
   return `
-  <div class="order-card" id="order-${order._id}">
+  <div class="order-card ${isReady ? 'ready-glow' : ''}" id="order-${order._id}">
+
     <div class="order-header">
       <div class="order-header-left">
         <span class="order-id-label">Order ${shortId(order._id)}</span>
         <span class="order-date-label">${formatDate(order.createdAt)}</span>
       </div>
-      <span class="status-badge status-${order.status.toLowerCase()}">${cfg.icon} ${order.status}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="status-badge status-${order.status.toLowerCase()}">${cfg.icon} ${order.status}</span>
+        <button class="qr-btn ${isReady ? 'ready-pulse' : ''}"
+          onclick="openQR(JSON.parse(decodeURIComponent('${orderStr}')))"
+          title="Show pickup QR code">
+          📱 ${isReady ? 'Show QR' : 'QR'}
+        </button>
+      </div>
     </div>
 
     ${buildTracker(order)}
 
     <div class="status-banner ${cfg.banner}">
       ${cfg.icon} ${cfg.msg}
+      ${isReady ? ' <strong style="margin-left:6px">→ Show your QR at the counter!</strong>' : ''}
     </div>
 
     <div class="order-items">
@@ -309,26 +420,25 @@ function buildOrderCard(order) {
     </div>
 
     <div class="order-footer">
-      <span class="order-pickup">
-        🕐 Pickup: ${order.pickupTime || 'ASAP'}
-      </span>
+      <span class="order-pickup">🕐 Pickup: ${order.pickupTime || 'ASAP'}</span>
       <div class="order-total-row">
         <span class="order-total-label">Total</span>
         <span class="order-total-amt">₹${order.total}</span>
       </div>
     </div>
+
   </div>`;
 }
 
-// ── Fetch orders ────────────────────────────────────────────────
-let previousStatuses = {}; // track status changes to show toast
+// ── Fetch orders ─────────────────────────────────────────────────
+let previousStatuses = {};
 
 async function fetchOrders() {
   try {
     const res = await fetch(`${API}/api/orders/my`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    if (!res.ok) throw new Error('Failed to fetch orders');
+    if (!res.ok) throw new Error('Failed');
     const orders = await res.json();
 
     const container = document.getElementById('orders-container');
@@ -344,11 +454,11 @@ async function fetchOrders() {
       return;
     }
 
-    // Check for status changes → toast notification
+    // Toast on status change
     orders.forEach(order => {
       const prev = previousStatuses[order._id];
       if (prev && prev !== order.status) {
-        const cfg = STATUS_CONFIG[order.status];
+        const cfg  = STATUS_CONFIG[order.status];
         const type = order.status === 'Ready' ? 'success' : order.status === 'Cancelled' ? 'error' : 'info';
         toast(`Order ${shortId(order._id)}: ${cfg.msg}`, type);
       }
@@ -357,22 +467,18 @@ async function fetchOrders() {
 
     container.innerHTML = orders.map(buildOrderCard).join('');
 
-    // Update refresh timestamp
-    const now = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date().toLocaleTimeString('en-IN',{ hour:'2-digit',minute:'2-digit' });
     document.getElementById('refresh-status').textContent = `Last updated ${now} · auto-refreshes every 15s`;
 
   } catch (err) {
-    console.error(err);
-    // Don't clear page on polling error, just show quiet warning
     const rs = document.getElementById('refresh-status');
     if (rs) rs.textContent = 'Connection issue — retrying...';
   }
 }
 
-// ── Initial load + auto-poll every 15 seconds ───────────────────
+// ── Init ─────────────────────────────────────────────────────────
 fetchOrders();
 setInterval(fetchOrders, 15000);
 </script>
-
 </body>
 </html>

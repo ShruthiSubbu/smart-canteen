@@ -1,7 +1,7 @@
 // backend/routes/orders.js
 const express = require('express');
-const router = express.Router();
-const Order = require('../models/Order');
+const router  = express.Router();
+const Order    = require('../models/Order');
 const MenuItem = require('../models/MenuItem');
 const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
@@ -27,19 +27,28 @@ router.post('/', authMiddleware, async (req, res) => {
       await menuItem.save();
 
       total += menuItem.price * item.quantity;
-      orderItems.push({ menuItemId: item.menuItemId, name: menuItem.name, price: menuItem.price, quantity: item.quantity });
+      orderItems.push({
+        menuItemId: item.menuItemId,
+        name:       menuItem.name,
+        price:      menuItem.price,
+        quantity:   item.quantity
+      });
     }
 
     const order = new Order({
-      userId: req.user.userId.toString(),
-      items: orderItems,
+      userId:   req.user.userId.toString(),
+      items:    orderItems,
       total,
       pickupTime,
-      status: 'Pending',
+      status:   'Pending',
       statusHistory: [{ status: 'Pending', changedAt: new Date() }]
     });
 
     await order.save();
+
+    // ── Emit new order event so admin dashboard updates live ──
+    req.io.emit('newOrder', order);
+
     res.status(201).json(order);
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -47,7 +56,6 @@ router.post('/', authMiddleware, async (req, res) => {
 });
 
 // ── GET /my — student's own orders ──────────────────────────────
-// NOTE: /my and /rush-status MUST be before /:id
 router.get('/my', authMiddleware, async (req, res) => {
   try {
     const orders = await Order.find({ userId: req.user.userId.toString() }).sort({ createdAt: -1 });
@@ -96,7 +104,7 @@ router.get('/:id', authMiddleware, async (req, res) => {
 router.patch('/:id/status', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { status } = req.body;
-    const validStatuses = ['Pending', 'Preparing', 'Ready', 'Completed', 'Cancelled'];
+    const validStatuses = ['Pending','Preparing','Ready','Completed','Cancelled'];
     if (!validStatuses.includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
     const order = await Order.findById(req.params.id);
@@ -105,6 +113,15 @@ router.patch('/:id/status', authMiddleware, adminMiddleware, async (req, res) =>
     order.status = status;
     order.statusHistory.push({ status, changedAt: new Date() });
     await order.save();
+
+    // ── Emit to ALL connected clients ─────────────────────────
+    // Students filter by their own userId on the frontend
+    req.io.emit('orderStatusUpdated', {
+      orderId:  order._id.toString(),
+      userId:   order.userId,
+      status:   order.status,
+      statusHistory: order.statusHistory
+    });
 
     res.json(order);
   } catch (err) {

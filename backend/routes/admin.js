@@ -1,25 +1,33 @@
-const express = require('express');
-const router = express.Router();
-const MenuItem = require('../models/MenuItem');
-const Order = require('../models/Order');
+// backend/routes/admin.js
+const express    = require('express');
+const router     = express.Router();
+const MenuItem   = require('../models/MenuItem');
+const Order      = require('../models/Order');
+const Settings   = require('../models/Settings');
+const { authMiddleware, adminMiddleware } = require('../middleware/auth');
 
-// ── CANTEEN TIMING (in-memory, resets on server restart) ─────────
-// Default: 8:00 AM – 9:00 PM, closed on Sundays
-let canteenConfig = {
-  openTime:       '08:00',
-  closeTime:      '21:00',
-  closedDays:     [0],       // 0=Sun, 1=Mon … 6=Sat
-  manualOverride: null       // null | 'open' | 'closed'
-};
+// ── HELPER: load canteen config from DB (with defaults) ──────────
+async function getCanteenConfig() {
+  const doc = await Settings.findOne({ key: 'canteenConfig' });
+  if (doc) return doc.value;
+  return {
+    openTime:       '08:00',
+    closeTime:      '21:00',
+    closedDays:     [0],
+    manualOverride: null
+  };
+}
 
+// ── HELPER: 24h "HH:MM" → "12:00 AM/PM" ────────────────────────
 function fmt12(hhmm) {
   const [h, m] = hhmm.split(':').map(Number);
-  const ampm = h >= 12 ? 'PM' : 'AM';
+  const ampm   = h >= 12 ? 'PM' : 'AM';
   return `${h % 12 || 12}:${m.toString().padStart(2, '0')} ${ampm}`;
 }
 
+// ── HELPER: next open day label ──────────────────────────────────
 function nextOpenLabel(config, now) {
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   for (let i = 1; i <= 7; i++) {
     const d = (now.getDay() + i) % 7;
     if (!config.closedDays.includes(d)) {
@@ -29,70 +37,89 @@ function nextOpenLabel(config, now) {
   return 'soon';
 }
 
-// GET /api/admin/canteen-status — public, called by menu + orders pages
-router.get('/canteen-status', (req, res) => {
-  const now   = new Date();
-  const day   = now.getDay();
-  const hhmm  = now.toTimeString().slice(0, 5);
+// ── GET /api/admin/canteen-status — PUBLIC (menu page + admin) ───
+router.get('/canteen-status', async (req, res) => {
+  try {
+    const config = await getCanteenConfig();
+    const now    = new Date();
+    const day    = now.getDay();
+    const hhmm   = now.toTimeString().slice(0, 5);
 
-  // Manual override takes priority
-  if (canteenConfig.manualOverride) {
-    const isOpen = canteenConfig.manualOverride === 'open';
-    return res.json({
+    // Manual override takes full priority
+    if (config.manualOverride) {
+      const isOpen = config.manualOverride === 'open';
+      return res.json({
+        isOpen,
+        openTime:       config.openTime,
+        closeTime:      config.closeTime,
+        closedDays:     config.closedDays,
+        manualOverride: config.manualOverride,
+        message: isOpen
+          ? `🟢 Canteen is OPEN (override) · Closes at ${fmt12(config.closeTime)}`
+          : `🔴 Canteen is CLOSED (override) · Opens at ${fmt12(config.openTime)}`
+      });
+    }
+
+    const isDayOff    = config.closedDays.includes(day);
+    const afterOpen   = hhmm >= config.openTime;
+    const beforeClose = hhmm <  config.closeTime;
+    const isOpen      = !isDayOff && afterOpen && beforeClose;
+
+    let message;
+    if (isDayOff)       message = `🔴 Canteen is CLOSED today · Opens ${nextOpenLabel(config, now)} at ${fmt12(config.openTime)}`;
+    else if (!afterOpen)  message = `🔴 Canteen is CLOSED · Opens today at ${fmt12(config.openTime)}`;
+    else if (!beforeClose)message = `🔴 Canteen is CLOSED · Opens ${nextOpenLabel(config, now)} at ${fmt12(config.openTime)}`;
+    else                  message = `🟢 Canteen is OPEN · Closes at ${fmt12(config.closeTime)}`;
+
+    res.json({
       isOpen,
-      openTime:       canteenConfig.openTime,
-      closeTime:      canteenConfig.closeTime,
-      closedDays:     canteenConfig.closedDays,
-      manualOverride: canteenConfig.manualOverride,
-      message: isOpen
-        ? `🟢 Canteen is OPEN (override) · Closes at ${fmt12(canteenConfig.closeTime)}`
-        : `🔴 Canteen is CLOSED (override) · Opens at ${fmt12(canteenConfig.openTime)}`
+      openTime:       config.openTime,
+      closeTime:      config.closeTime,
+      closedDays:     config.closedDays,
+      manualOverride: null,
+      message
     });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-
-  const isDayOff   = canteenConfig.closedDays.includes(day);
-  const afterOpen  = hhmm >= canteenConfig.openTime;
-  const beforeClose = hhmm < canteenConfig.closeTime;
-  const isOpen     = !isDayOff && afterOpen && beforeClose;
-
-  let message;
-  if (isDayOff) {
-    message = `🔴 Canteen is CLOSED today · Opens ${nextOpenLabel(canteenConfig, now)} at ${fmt12(canteenConfig.openTime)}`;
-  } else if (!afterOpen) {
-    message = `🔴 Canteen is CLOSED · Opens today at ${fmt12(canteenConfig.openTime)}`;
-  } else if (!beforeClose) {
-    message = `🔴 Canteen is CLOSED · Opens ${nextOpenLabel(canteenConfig, now)} at ${fmt12(canteenConfig.openTime)}`;
-  } else {
-    message = `🟢 Canteen is OPEN · Closes at ${fmt12(canteenConfig.closeTime)}`;
-  }
-
-  res.json({
-    isOpen,
-    openTime:       canteenConfig.openTime,
-    closeTime:      canteenConfig.closeTime,
-    closedDays:     canteenConfig.closedDays,
-    manualOverride: null,
-    message
-  });
 });
 
-// PUT /api/admin/canteen-timing — admin saves timing settings
-router.put('/canteen-timing', (req, res) => {
-  const { openTime, closeTime, closedDays, manualOverride } = req.body;
-  if (openTime   !== undefined) canteenConfig.openTime       = openTime;
-  if (closeTime  !== undefined) canteenConfig.closeTime      = closeTime;
-  if (closedDays !== undefined) canteenConfig.closedDays     = closedDays;
-  if (manualOverride !== undefined) canteenConfig.manualOverride = manualOverride || null;
-  res.json({ message: 'Canteen timing updated!', config: canteenConfig });
+// ── PUT /api/admin/canteen-timing — ADMIN ONLY ───────────────────
+router.put('/canteen-timing', authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const { openTime, closeTime, closedDays, manualOverride } = req.body;
+
+    // Load current config, merge changes
+    const current = await getCanteenConfig();
+    const updated = {
+      openTime:       openTime       !== undefined ? openTime       : current.openTime,
+      closeTime:      closeTime      !== undefined ? closeTime      : current.closeTime,
+      closedDays:     closedDays     !== undefined ? closedDays     : current.closedDays,
+      manualOverride: manualOverride !== undefined ? (manualOverride || null) : current.manualOverride
+    };
+
+    // Upsert into MongoDB
+    await Settings.findOneAndUpdate(
+      { key: 'canteenConfig' },
+      { key: 'canteenConfig', value: updated },
+      { upsert: true, new: true }
+    );
+
+    res.json({ message: 'Canteen timing updated!', config: updated });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 });
 
-// ── MENU ITEM ROUTES ─────────────────────────────────────────────
-
-// ADD MENU ITEM
-router.post('/menu/add', async (req, res) => {
+// ── POST /api/admin/menu/add — ADMIN ONLY ────────────────────────
+router.post('/menu/add', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { name, category, price, stockCount, description } = req.body;
-    const item = new MenuItem({ name, category, price, stock: stockCount, stockCount, description });
+    const item = new MenuItem({
+      name, category, price,
+      stock: stockCount, stockCount,
+      description
+    });
     await item.save();
     res.status(201).json({ message: 'Menu item added!', item });
   } catch (err) {
@@ -100,8 +127,8 @@ router.post('/menu/add', async (req, res) => {
   }
 });
 
-// RESTOCK MENU ITEM
-router.put('/menu/restock/:id', async (req, res) => {
+// ── PUT /api/admin/menu/restock/:id — ADMIN ONLY ─────────────────
+router.put('/menu/restock/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { stockCount } = req.body;
     const item = await MenuItem.findByIdAndUpdate(
@@ -115,8 +142,8 @@ router.put('/menu/restock/:id', async (req, res) => {
   }
 });
 
-// GET ALL MENU ITEMS
-router.get('/menu', async (req, res) => {
+// ── GET /api/admin/menu — ADMIN ONLY ────────────────────────────
+router.get('/menu', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const items = await MenuItem.find().sort({ category: 1 });
     res.json(items);
@@ -125,8 +152,8 @@ router.get('/menu', async (req, res) => {
   }
 });
 
-// GET DASHBOARD STATS
-router.get('/stats', async (req, res) => {
+// ── GET /api/admin/stats — ADMIN ONLY ───────────────────────────
+router.get('/stats', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const totalOrders      = await Order.countDocuments();
     const pendingOrders    = await Order.countDocuments({ status: 'Pending' });
@@ -139,8 +166,8 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// GET ALL ORDERS
-router.get('/orders', async (req, res) => {
+// ── GET /api/admin/orders — ADMIN ONLY ──────────────────────────
+router.get('/orders', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const orders = await Order.find().sort({ createdAt: -1 });
     res.json(orders);
@@ -149,18 +176,20 @@ router.get('/orders', async (req, res) => {
   }
 });
 
-// EDIT MENU ITEM
-router.put('/menu/:id', async (req, res) => {
+// ── PUT /api/admin/menu/:id — ADMIN ONLY ────────────────────────
+router.put('/menu/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { name, category, price, stockCount, description, available } = req.body;
     const item = await MenuItem.findById(req.params.id);
     if (!item) return res.status(404).json({ message: 'Item not found' });
+
     if (name        !== undefined) item.name        = name;
     if (category    !== undefined) item.category    = category;
     if (price       !== undefined) item.price       = Number(price);
     if (stockCount  !== undefined) { item.stock = Number(stockCount); item.stockCount = Number(stockCount); }
     if (description !== undefined) item.description = description;
     if (available   !== undefined) { item.available = available; item.isAvailable = available; }
+
     await item.save();
     res.json({ message: 'Item updated', item });
   } catch (err) {
@@ -168,8 +197,8 @@ router.put('/menu/:id', async (req, res) => {
   }
 });
 
-// DELETE MENU ITEM
-router.delete('/menu/:id', async (req, res) => {
+// ── DELETE /api/admin/menu/:id — ADMIN ONLY ─────────────────────
+router.delete('/menu/:id', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const item = await MenuItem.findByIdAndDelete(req.params.id);
     if (!item) return res.status(404).json({ message: 'Item not found' });

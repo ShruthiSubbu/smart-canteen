@@ -5,6 +5,59 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Admin Dashboard — Smart Canteen</title>
   <link rel="stylesheet" href="../css/style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    /* ── Analytics Tab ── */
+    .analytics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      margin-bottom: 1.2rem;
+    }
+    @media (max-width: 700px) { .analytics-grid { grid-template-columns: 1fr; } }
+
+    .chart-card {
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.3rem 1.4rem;
+    }
+    .chart-card-title {
+      font-family: var(--font-heading);
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.2rem;
+    }
+    .chart-card-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-bottom: 1.1rem;
+    }
+    .chart-card canvas { width: 100% !important; }
+
+    .chart-card.full-width {
+      grid-column: 1 / -1;
+    }
+
+    /* ── Analytics summary pills ── */
+    .analytics-summary {
+      display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem;
+    }
+    .summary-pill {
+      flex: 1; min-width: 130px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.2rem;
+      text-align: center;
+    }
+    .summary-pill-value {
+      font-family: var(--font-heading); font-size: 1.5rem;
+      font-weight: 700; color: var(--teal-dark); margin-bottom: 3px;
+    }
+    .summary-pill-label {
+      font-size: 0.75rem; color: var(--text-muted); font-weight: 500;
+    }
+  </style>
 </head>
 <body>
 
@@ -73,6 +126,7 @@
 <!-- ── TAB NAV ── -->
 <div class="admin-tabs">
   <button class="admin-tab active" onclick="showTab('orders',this)">📋 Orders</button>
+  <button class="admin-tab" onclick="showTab('analytics',this)">📊 Analytics</button>
   <button class="admin-tab" onclick="showTab('demand',this)">📈 Demand</button>
   <button class="admin-tab" onclick="showTab('addmenu',this)">➕ Add Item</button>
   <button class="admin-tab" onclick="showTab('menuitems',this)">✏️ Menu Items</button>
@@ -90,6 +144,79 @@
     </div>
   </div>
   <div id="admin-orders-container"><div class="spinner"></div></div>
+</div>
+
+<!-- ══ ANALYTICS TAB ═══════════════════════════════════════════ -->
+<div id="tab-analytics" class="page-content" style="display:none">
+  <div class="section-header">
+    <h2 class="section-title">📊 Analytics</h2>
+    <button class="btn btn-outline btn-sm" onclick="loadAnalytics()">↻ Refresh</button>
+  </div>
+  <p style="color:var(--text-muted);font-size:0.88rem;margin-bottom:1.4rem;margin-top:-0.5rem">
+    Live insights from your order and menu data.
+  </p>
+
+  <!-- Summary pills -->
+  <div class="analytics-summary">
+    <div class="summary-pill">
+      <div class="summary-pill-value" id="an-today-orders">—</div>
+      <div class="summary-pill-label">Orders Today</div>
+    </div>
+    <div class="summary-pill">
+      <div class="summary-pill-value" id="an-today-revenue">—</div>
+      <div class="summary-pill-label">Revenue Today</div>
+    </div>
+    <div class="summary-pill">
+      <div class="summary-pill-value" id="an-avg-order">—</div>
+      <div class="summary-pill-label">Avg Order Value</div>
+    </div>
+    <div class="summary-pill">
+      <div class="summary-pill-value" id="an-top-item">—</div>
+      <div class="summary-pill-label">Top Item Today</div>
+    </div>
+  </div>
+
+  <!-- Charts grid -->
+  <div class="analytics-grid">
+
+    <!-- Orders per day — bar -->
+    <div class="chart-card">
+      <div class="chart-card-title">Orders per Day</div>
+      <div class="chart-card-sub">Last 7 days</div>
+      <canvas id="chart-orders-day" height="200"></canvas>
+    </div>
+
+    <!-- Revenue per day — line -->
+    <div class="chart-card">
+      <div class="chart-card-title">Revenue per Day</div>
+      <div class="chart-card-sub">Last 7 days (₹)</div>
+      <canvas id="chart-revenue-day" height="200"></canvas>
+    </div>
+
+    <!-- Orders by category — doughnut -->
+    <div class="chart-card">
+      <div class="chart-card-title">Orders by Category</div>
+      <div class="chart-card-sub">All time breakdown</div>
+      <canvas id="chart-category" height="220"></canvas>
+    </div>
+
+    <!-- Top rated items — horizontal bar -->
+    <div class="chart-card">
+      <div class="chart-card-title">Top Rated Items</div>
+      <div class="chart-card-sub">By average star rating</div>
+      <canvas id="chart-ratings" height="220"></canvas>
+    </div>
+
+    <!-- Order status breakdown — doughnut -->
+    <div class="chart-card full-width">
+      <div class="chart-card-title">Order Status Breakdown</div>
+      <div class="chart-card-sub">All time — how orders are distributed across statuses</div>
+      <div style="max-width:400px;margin:0 auto">
+        <canvas id="chart-status" height="180"></canvas>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <!-- ══ DEMAND TAB ══════════════════════════════════════════════ -->
@@ -186,7 +313,6 @@
     <h2 class="section-title">🕐 Canteen Timing</h2>
   </div>
 
-  <!-- Live status preview -->
   <div id="timing-live-status" style="
     display:flex;align-items:center;gap:10px;
     padding:14px 18px;border-radius:var(--radius);font-size:0.92rem;font-weight:600;
@@ -197,7 +323,6 @@
     <span id="timing-status-text">Loading…</span>
   </div>
 
-  <!-- Manual Override -->
   <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.4rem 1.5rem;margin-bottom:1.5rem">
     <div style="font-family:var(--font-heading);font-size:1rem;font-weight:700;margin-bottom:0.3rem">⚡ Manual Override</div>
     <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:1rem">Force the canteen open or closed regardless of the schedule below.</p>
@@ -213,7 +338,6 @@
     <div id="override-msg" style="margin-top:10px;font-size:0.82rem;font-weight:600"></div>
   </div>
 
-  <!-- Schedule Settings -->
   <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.4rem 1.5rem;margin-bottom:1.5rem">
     <div style="font-family:var(--font-heading);font-size:1rem;font-weight:700;margin-bottom:1rem">📅 Weekly Schedule</div>
     <div class="form-row" style="margin-bottom:1rem">
@@ -232,9 +356,7 @@
     </div>
     <div class="form-group" style="margin-bottom:1.2rem">
       <label>Closed Days</label>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" id="closed-days-picker">
-        <!-- rendered by JS -->
-      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" id="closed-days-picker"></div>
     </div>
     <button class="btn btn-primary" onclick="saveTimingSchedule()">💾 Save Schedule</button>
     <div id="timing-save-msg" style="margin-top:10px;font-size:0.85rem;font-weight:600"></div>
@@ -266,9 +388,12 @@
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 250); }, 3500);
   }
 
+  // ── Tab switching — now includes 'analytics' ─────────────────
+  const ALL_TABS = ['orders','analytics','demand','addmenu','menuitems','restock','timing'];
+
   function showTab(tab, btn) {
-    ['orders','demand','addmenu','menuitems','restock','timing'].forEach(t => {
-      document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+    ALL_TABS.forEach(t => {
+      document.getElementById('tab-'+t).style.display = t === tab ? 'block' : 'none';
     });
     document.querySelectorAll('.admin-tab').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
@@ -276,8 +401,236 @@
     if (tab === 'demand')    loadDemandPrediction();
     if (tab === 'menuitems') loadMenuItems();
     if (tab === 'timing')    loadTimingTab();
+    if (tab === 'analytics') loadAnalytics();
   }
 
+  // ══ ANALYTICS ════════════════════════════════════════════════
+  // Store chart instances so we can destroy before re-rendering
+  const charts = {};
+
+  function destroyChart(id) {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+  }
+
+  // Returns last N day labels: ['Mon 28', 'Tue 29', ...]
+  function lastNDayLabels(n) {
+    const labels = [];
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      labels.push(d.toLocaleDateString('en-IN', { weekday:'short', day:'numeric' }));
+    }
+    return labels;
+  }
+
+  // Returns YYYY-MM-DD string for a date
+  function toDateStr(date) {
+    return date.toISOString().slice(0, 10);
+  }
+
+  async function loadAnalytics() {
+    try {
+      // Fetch all orders + all menu items in parallel
+      const [ordersRes, itemsRes] = await Promise.all([
+        fetch(`${API}/api/orders`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetch(`${API}/api/menu`)
+      ]);
+      const orders = await ordersRes.json();
+      const items  = await itemsRes.json();
+
+      // ── Summary pills ──────────────────────────────────────
+      const todayStr   = toDateStr(new Date());
+      const todayOrds  = orders.filter(o => toDateStr(new Date(o.createdAt)) === todayStr);
+      const todayRev   = todayOrds.reduce((s, o) => s + (o.total || 0), 0);
+      const avgVal     = orders.length ? Math.round(orders.reduce((s,o) => s+(o.total||0),0) / orders.length) : 0;
+
+      // Top item today by quantity sold in today's orders
+      const todayItemMap = {};
+      todayOrds.forEach(o => o.items.forEach(i => {
+        todayItemMap[i.name] = (todayItemMap[i.name] || 0) + i.quantity;
+      }));
+      const topToday = Object.entries(todayItemMap).sort((a,b) => b[1]-a[1])[0];
+
+      document.getElementById('an-today-orders').textContent  = todayOrds.length;
+      document.getElementById('an-today-revenue').textContent = `₹${todayRev}`;
+      document.getElementById('an-avg-order').textContent     = `₹${avgVal}`;
+      document.getElementById('an-top-item').textContent      = topToday ? topToday[0].split(' ')[0] : '—';
+
+      // ── Chart 1: Orders per day (last 7) ──────────────────
+      const dayLabels  = lastNDayLabels(7);
+      const ordersPerDay = dayLabels.map((_, idx) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - idx));
+        const ds = toDateStr(d);
+        return orders.filter(o => toDateStr(new Date(o.createdAt)) === ds).length;
+      });
+
+      destroyChart('orders-day');
+      charts['orders-day'] = new Chart(
+        document.getElementById('chart-orders-day'),
+        {
+          type: 'bar',
+          data: {
+            labels: dayLabels,
+            datasets: [{
+              label: 'Orders',
+              data: ordersPerDay,
+              backgroundColor: 'rgba(13,115,119,0.75)',
+              borderColor: '#0D7377',
+              borderWidth: 1.5,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+              x: { grid: { display: false } }
+            }
+          }
+        }
+      );
+
+      // ── Chart 2: Revenue per day (last 7) ────────────────
+      const revenuePerDay = dayLabels.map((_, idx) => {
+        const d = new Date(); d.setDate(d.getDate() - (6 - idx));
+        const ds = toDateStr(d);
+        return orders
+          .filter(o => toDateStr(new Date(o.createdAt)) === ds)
+          .reduce((s, o) => s + (o.total || 0), 0);
+      });
+
+      destroyChart('revenue-day');
+      charts['revenue-day'] = new Chart(
+        document.getElementById('chart-revenue-day'),
+        {
+          type: 'line',
+          data: {
+            labels: dayLabels,
+            datasets: [{
+              label: 'Revenue (₹)',
+              data: revenuePerDay,
+              borderColor: '#F4831F',
+              backgroundColor: 'rgba(244,131,31,0.10)',
+              borderWidth: 2.5,
+              pointBackgroundColor: '#F4831F',
+              pointRadius: 4,
+              fill: true,
+              tension: 0.4
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+              x: { grid: { display: false } }
+            }
+          }
+        }
+      );
+
+      // ── Chart 3: Orders by category ───────────────────────
+      const catMap = { Breakfast:0, Lunch:0, Snacks:0, Beverages:0 };
+      orders.forEach(o => o.items.forEach(i => {
+        // look up category from menu items
+        const mi = items.find(m => m._id === i.menuItemId || m.name === i.name);
+        const cat = mi?.category || 'Snacks';
+        catMap[cat] = (catMap[cat] || 0) + i.quantity;
+      }));
+
+      destroyChart('category');
+      charts['category'] = new Chart(
+        document.getElementById('chart-category'),
+        {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(catMap),
+            datasets: [{
+              data: Object.values(catMap),
+              backgroundColor: ['#F4831F','#0D7377','#2F855A','#6B46C1'],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+            },
+            cutout: '60%'
+          }
+        }
+      );
+
+      // ── Chart 4: Top rated items ──────────────────────────
+      const rated = items
+        .filter(i => i.totalRatings > 0)
+        .sort((a, b) => b.avgRating - a.avgRating)
+        .slice(0, 5);
+
+      destroyChart('ratings');
+      charts['ratings'] = new Chart(
+        document.getElementById('chart-ratings'),
+        {
+          type: 'bar',
+          data: {
+            labels: rated.map(i => i.name.length > 14 ? i.name.slice(0,13)+'…' : i.name),
+            datasets: [{
+              label: 'Avg Rating',
+              data: rated.map(i => i.avgRating),
+              backgroundColor: 'rgba(107,70,193,0.75)',
+              borderColor: '#6B46C1',
+              borderWidth: 1.5,
+              borderRadius: 6
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { min: 0, max: 5, ticks: { stepSize: 1 }, grid: { color: 'rgba(0,0,0,0.05)' } },
+              y: { grid: { display: false } }
+            }
+          }
+        }
+      );
+
+      // ── Chart 5: Order status breakdown ───────────────────
+      const statusMap = { Pending:0, Preparing:0, Ready:0, Completed:0, Cancelled:0 };
+      orders.forEach(o => { statusMap[o.status] = (statusMap[o.status]||0) + 1; });
+
+      destroyChart('status');
+      charts['status'] = new Chart(
+        document.getElementById('chart-status'),
+        {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(statusMap),
+            datasets: [{
+              data: Object.values(statusMap),
+              backgroundColor: ['#D97706','#3B82F6','#2F855A','#6B7280','#DC2626'],
+              borderWidth: 2,
+              borderColor: '#fff'
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { position: 'bottom', labels: { padding: 16, font: { size: 12 } } }
+            },
+            cutout: '55%'
+          }
+        }
+      );
+
+    } catch (err) {
+      toast('Failed to load analytics', 'error');
+    }
+  }
+
+  // ══ ORDERS ═══════════════════════════════════════════════════
   const STATUS_OPTIONS = ['Pending','Preparing','Ready','Completed','Cancelled'];
   const STATUS_COLORS  = { Pending:'status-pending', Preparing:'status-preparing', Ready:'status-ready', Completed:'status-completed', Cancelled:'status-cancelled' };
   const STATUS_ICONS   = { Pending:'⏳', Preparing:'👨‍🍳', Ready:'🔔', Completed:'✅', Cancelled:'❌' };
@@ -368,6 +721,7 @@
                 <span style="font-size:0.82rem;color:var(--saffron-dark);font-weight:700">₹${item.price}</span>
                 <span style="font-size:0.78rem;color:${stock<10?'var(--red)':'var(--text-muted)'}">📦 ${stock} left</span>
                 <span style="font-size:0.78rem;font-weight:600;color:${available?'var(--green)':'var(--red)'}">${available?'✅ Available':'❌ Unavailable'}</span>
+                ${item.avgRating ? `<span style="font-size:0.78rem;color:#6B46C1;font-weight:600">⭐ ${item.avgRating} (${item.totalRatings})</span>` : ''}
               </div>
             </div>
           </div>
@@ -440,6 +794,7 @@
             <span>📦 Stock: <strong style="color:var(--text)">${item.stock??item.stockCount??0}</strong></span>
             <span>💰 Price: <strong style="color:var(--text)">₹${item.price}</strong></span>
             <span>🛒 Orders: <strong style="color:var(--text)">${item.orderCount}</strong></span>
+            ${item.avgRating ? `<span>⭐ Rating: <strong style="color:var(--text)">${item.avgRating}</strong></span>` : ''}
           </div>
         </div>`;
       }).join('')||'<p class="text-muted">No items.</p>';
@@ -479,9 +834,9 @@
     } catch { toast('Server error.','error'); }
   }
 
-  // ══ TIMING TAB ════════════════════════════════════════════════
+  // ══ TIMING ═══════════════════════════════════════════════════
   const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  let currentClosedDays = [0]; // default: Sunday closed
+  let currentClosedDays = [0];
 
   function renderDayPicker(closedDays) {
     currentClosedDays = closedDays || [0];
@@ -496,11 +851,8 @@
   }
 
   function toggleDay(dayIndex) {
-    if (currentClosedDays.includes(dayIndex)) {
-      currentClosedDays = currentClosedDays.filter(d => d !== dayIndex);
-    } else {
-      currentClosedDays = [...currentClosedDays, dayIndex];
-    }
+    if (currentClosedDays.includes(dayIndex)) currentClosedDays = currentClosedDays.filter(d => d !== dayIndex);
+    else currentClosedDays = [...currentClosedDays, dayIndex];
     renderDayPicker(currentClosedDays);
   }
 
@@ -508,33 +860,22 @@
     try {
       const res  = await fetch(`${API}/api/admin/canteen-status`);
       const data = await res.json();
-
-      // Fill form
       document.getElementById('timing-open').value  = data.openTime  || '08:00';
       document.getElementById('timing-close').value = data.closeTime || '21:00';
       renderDayPicker(data.closedDays || [0]);
-
-      // Update live status preview
-      const statusEl  = document.getElementById('timing-status-text');
-      const dotEl     = document.getElementById('timing-status-dot');
-      const liveBox   = document.getElementById('timing-live-status');
+      const statusEl = document.getElementById('timing-status-text');
+      const dotEl    = document.getElementById('timing-status-dot');
+      const liveBox  = document.getElementById('timing-live-status');
       statusEl.textContent = data.message;
       if (data.isOpen) {
-        liveBox.style.background = 'var(--teal-pale)';
-        liveBox.style.color      = 'var(--teal-dark)';
-        liveBox.style.border     = '1.5px solid rgba(13,115,119,0.2)';
-        dotEl.style.background   = 'var(--teal)';
+        liveBox.style.background = 'var(--teal-pale)'; liveBox.style.color = 'var(--teal-dark)';
+        liveBox.style.border = '1.5px solid rgba(13,115,119,0.2)'; dotEl.style.background = 'var(--teal)';
       } else {
-        liveBox.style.background = '#FEE2E2';
-        liveBox.style.color      = 'var(--red)';
-        liveBox.style.border     = '1.5px solid rgba(229,62,62,0.2)';
-        dotEl.style.background   = 'var(--red)';
+        liveBox.style.background = '#FEE2E2'; liveBox.style.color = 'var(--red)';
+        liveBox.style.border = '1.5px solid rgba(229,62,62,0.2)'; dotEl.style.background = 'var(--red)';
       }
-
-      // Highlight active override button
       document.getElementById('btn-override-open').style.opacity   = data.manualOverride === 'open'   ? '1' : '0.5';
       document.getElementById('btn-override-closed').style.opacity = data.manualOverride === 'closed' ? '1' : '0.5';
-
     } catch { document.getElementById('timing-status-text').textContent = 'Could not load status'; }
   }
 
@@ -559,10 +900,8 @@
     const openTime  = document.getElementById('timing-open').value;
     const closeTime = document.getElementById('timing-close').value;
     const msg       = document.getElementById('timing-save-msg');
-
     if (!openTime || !closeTime) { msg.style.color='var(--red)'; msg.textContent='❌ Please set both open and close times.'; return; }
     if (openTime >= closeTime)   { msg.style.color='var(--red)'; msg.textContent='❌ Opening time must be before closing time.'; return; }
-
     try {
       const res = await fetch(`${API}/api/admin/canteen-timing`, {
         method: 'PUT',
@@ -570,14 +909,11 @@
         body: JSON.stringify({ openTime, closeTime, closedDays: currentClosedDays })
       });
       if (res.ok) {
-        msg.style.color = 'var(--green)';
-        msg.textContent = '✅ Schedule saved!';
+        msg.style.color = 'var(--green)'; msg.textContent = '✅ Schedule saved!';
         toast('Canteen schedule updated!', 'success');
         setTimeout(() => { msg.textContent = ''; }, 3000);
         loadTimingTab();
-      } else {
-        msg.style.color = 'var(--red)'; msg.textContent = '❌ Failed to save.';
-      }
+      } else { msg.style.color = 'var(--red)'; msg.textContent = '❌ Failed to save.'; }
     } catch { msg.style.color='var(--red)'; msg.textContent='❌ Server error.'; }
   }
 
@@ -589,11 +925,10 @@
     } catch { document.getElementById('rushStatus').textContent='—'; }
   }
 
-  // ── Init ─────────────────────────────────────────────────────
+  // ── Init ──────────────────────────────────────────────────────
   loadOrders(); checkRush();
   setInterval(loadOrders, 10000);
   setInterval(checkRush, 15000);
 </script>
-
 </body>
 </html>

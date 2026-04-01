@@ -1,4 +1,12 @@
+// backend/models/MenuItem.js
 const mongoose = require('mongoose');
+
+const ratingSchema = new mongoose.Schema({
+  userId:    { type: String, required: true },
+  stars:     { type: Number, required: true, min: 1, max: 5 },
+  comment:   { type: String, default: '' },
+  createdAt: { type: Date, default: Date.now }
+});
 
 const menuItemSchema = new mongoose.Schema({
   name: {
@@ -35,6 +43,19 @@ const menuItemSchema = new mongoose.Schema({
     default: true
   },
   orderCount: {
+    type: Number,
+    default: 0
+  },
+  // ── Ratings ──────────────────────────────────────────────────
+  ratings: {
+    type: [ratingSchema],
+    default: []
+  },
+  avgRating: {
+    type: Number,
+    default: 0
+  },
+  totalRatings: {
     type: Number,
     default: 0
   }
